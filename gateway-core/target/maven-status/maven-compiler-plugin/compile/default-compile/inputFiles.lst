@@ -1,0 +1,8 @@
+C:\Repos\pg\gateway-core\src\main\java\com\marianna\gateway\domain\FraudSignal.java
+C:\Repos\pg\gateway-core\src\main\java\com\marianna\gateway\port\PaymentRepository.java
+C:\Repos\pg\gateway-core\src\main\java\com\marianna\gateway\port\FraudEvaluator.java
+C:\Repos\pg\gateway-core\src\main\java\com\marianna\gateway\service\FraudDetectionService.java
+C:\Repos\pg\gateway-core\src\main\java\com\marianna\gateway\service\PaymentService.java
+C:\Repos\pg\gateway-core\src\main\java\com\marianna\gateway\domain\PaymentOrder.java
+C:\Repos\pg\gateway-core\src\main\java\com\marianna\gateway\domain\PaymentStatus.java
+C:\Repos\pg\gateway-core\src\main\java\com\marianna\gateway\domain\PaymentMethod.java

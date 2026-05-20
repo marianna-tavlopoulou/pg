@@ -1,0 +1,3 @@
+com\marianna\gateway\adapter\PaymentRepositoryAdapter.class
+com\marianna\gateway\entity\PaymentOrderEntity.class
+com\marianna\gateway\repository\PaymentOrderJpaRepository.class

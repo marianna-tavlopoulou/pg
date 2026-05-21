@@ -1,6 +1,0 @@
-com\marianna\gateway\exception\GlobalExceptionHandler.class
-com\marianna\gateway\controller\PaymentController.class
-com\marianna\gateway\dto\PaymentResponse.class
-com\marianna\gateway\exception\PaymentNotFoundException.class
-com\marianna\gateway\dto\PaymentRequest.class
-com\marianna\gateway\GatewayApplication.class

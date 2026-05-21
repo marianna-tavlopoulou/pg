@@ -1,0 +1,51 @@
+# ====== Target & Build Outputs ======
+target/
+build/
+bin/
+out/
+*.class
+*.jar
+*.war
+*.ear
+
+# ====== VS Code Settings ======
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# ====== IntelliJ IDEA ======
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# ====== Eclipse ======
+.metadata/
+.classpath
+.project
+.settings/
+*.launch
+
+# ====== Build Tools (Maven / Gradle) ======
+.mvn/
+mvnw
+mvnw.cmd
+.gradle/
+gradlew
+gradlew.cmd
+gradle/wrapper/
+**/target/
+
+# ====== OS & System Files ======
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ====== Environment & Secrets ======
+.env
+.env.local
+*.log

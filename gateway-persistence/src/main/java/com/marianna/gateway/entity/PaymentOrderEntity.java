@@ -1,5 +1,6 @@
 package com.marianna.gateway.entity;
 
+import com.marianna.gateway.domain.Currency;
 import com.marianna.gateway.domain.PaymentMethod;
 import com.marianna.gateway.domain.PaymentStatus;
 import jakarta.persistence.*;
@@ -30,7 +31,7 @@ public class PaymentOrderEntity {
 
     @Column(nullable = false, length = 3)
     @Enumerated(EnumType.STRING)
-    private String currency;
+    private Currency currency;
 
     @Enumerated(EnumType.STRING) @Column(nullable = false)
     private PaymentMethod method;
@@ -48,4 +49,5 @@ public class PaymentOrderEntity {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
 }

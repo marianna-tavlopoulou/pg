@@ -1,5 +1,6 @@
 package com.marianna.gateway.adapter;
 
+import com.marianna.gateway.domain.Currency;
 import com.marianna.gateway.domain.PaymentOrder;
 import com.marianna.gateway.domain.PaymentStatus;
 import com.marianna.gateway.entity.PaymentOrderEntity;
@@ -28,14 +29,14 @@ public class PaymentRepositoryAdapter implements PaymentRepository {
     private PaymentOrderEntity toEntity(PaymentOrder o) {
         var e = new PaymentOrderEntity();
         e.setId(o.id()); e.setMerchantId(o.merchantId()); e.setAmount(o.amount());
-        e.setCurrency(o.currency()); e.setMethod(o.method()); e.setStatus(o.status());
+        e.setCurrency(Currency.from(o.currency())); e.setMethod(o.method()); e.setStatus(o.status());
         e.setIdempotencyKey(o.idempotencyKey()); e.setDescription(o.description());
         e.setCreatedAt(o.createdAt()); e.setUpdatedAt(o.updatedAt());
         return e;
     }
 
     private PaymentOrder toDomain(PaymentOrderEntity e) {
-        return new PaymentOrder(e.getId(), e.getMerchantId(), e.getAmount(), e.getCurrency(),
+        return new PaymentOrder(e.getId(), e.getMerchantId(), e.getAmount(), e.getCurrency().toString(),
             e.getMethod(), e.getStatus(), e.getIdempotencyKey(), e.getDescription(),
             e.getCreatedAt(), e.getUpdatedAt());
     }

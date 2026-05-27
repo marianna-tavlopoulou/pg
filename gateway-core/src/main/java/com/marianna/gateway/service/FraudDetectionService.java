@@ -27,7 +27,7 @@ public class FraudDetectionService implements FraudEvaluator {
         }
 
         if ("WALLET".equals(order.method().name()) && order.amount().compareTo(HIGH) > 0) {
-            risk += 15; flags.add("HIGH_WALLET_AMOUNT");
+            risk += 25; flags.add("HIGH_WALLET_AMOUNT");
         }
 
         // TODO Week 3: add Redis velocity check

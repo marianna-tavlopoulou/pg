@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS payment_orders (
     idempotency_key VARCHAR(255)   NOT NULL UNIQUE,
     description     VARCHAR(500),
     created_at      TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ    NOT NULL DEFAULT NOW()
+    updated_at      TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
+    version         BIGINT         NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_merchant_status ON payment_orders (merchant_id, status);

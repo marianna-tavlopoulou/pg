@@ -50,4 +50,18 @@ public class PaymentOrderEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Version
+    private Long version;
+
+    @PrePersist
+    void prePersist() {
+        createdAt = Instant.now();
+        updatedAt = Instant.now();
+    }
+
+    @PreUpdate
+    void PreUpdate() {
+        updatedAt = Instant.now();
+    }
+
 }

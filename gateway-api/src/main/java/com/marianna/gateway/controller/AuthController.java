@@ -3,6 +3,8 @@ package com.marianna.gateway.controller;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,7 +32,7 @@ public class AuthController {
     public ResponseEntity<AuthResponse> getToken(@RequestBody AuthRequest request) {
 
         if (!validApiKey.equals(request.apiKey())) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
         String token = jwtService.generateToken(UUID.randomUUID(), "merchant-user");

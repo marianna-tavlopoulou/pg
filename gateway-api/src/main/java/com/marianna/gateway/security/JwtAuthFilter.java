@@ -38,12 +38,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             // Remove "Bearer "
             String token = authHeader.substring(7);
             if (!jwtService.validateToken(token)) {
-                filterChain.doFilter(request, response);
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
                 return;
             }
 
 
-            String username = jwtService.extractUsername(authHeader);
+            String username = jwtService.extractUsername(token);
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(username, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 

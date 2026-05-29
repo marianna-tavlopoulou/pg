@@ -2,6 +2,7 @@ package com.marianna.gateway.security;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -43,8 +44,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
 
 
-            String username = jwtService.extractUsername(token);
-            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(username, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
+            UUID merchantId = jwtService.extractUserId(token);
+            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(merchantId, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
             SecurityContextHolder.getContext().setAuthentication(authentication);

@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -29,7 +30,7 @@ public class PaymentController {
     @Operation(summary = "Submit a payment — include Idempotency-Key header to safely retry")
     public ResponseEntity<PaymentResponse> submitPayment(
         @RequestHeader("Idempotency-Key") String idempotencyKey,
-        @RequestHeader("X-Merchant-Id") UUID merchantId,
+        @AuthenticationPrincipal UUID merchantId,
         @Valid @RequestBody PaymentRequest request
     ) {
         PaymentOrder order = PaymentOrder.create(merchantId, request.amount(),

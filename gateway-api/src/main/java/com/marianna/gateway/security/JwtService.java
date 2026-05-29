@@ -1,5 +1,6 @@
 package com.marianna.gateway.security;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.UUID;
 
@@ -9,17 +10,22 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
+@Slf4j
 public class JwtService {
 
     private final SecretKey secretKey;
     private final long expiration;
+    
 
     public JwtService (@Value("${jwt.secret}") String secret, @Value("${jwt.expiration-ms}") long expiration) {
-        this.secretKey = Keys.hmacShaKeyFor(secret.getBytes());
+        this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expiration = expiration;
     }
 
@@ -45,12 +51,16 @@ public class JwtService {
             .parseSignedClaims(token);
 
             return true;
-        } catch (Exception e) {
+        } catch (ExpiredJwtException e) {
+            log.warn("Token expired" + e.getMessage());
+            return false;
+        } catch (JwtException e) {
+            log.warn("Invalid token" + e.getMessage());
             return false;
         }
     }
 
-    public String extractUsername(String token) {
+    public String extractSubject(String token) {
 
         return extractClaims(token).getSubject();
 

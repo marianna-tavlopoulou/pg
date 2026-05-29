@@ -8,14 +8,14 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import com.marianna.gateway.security.JwtAuthenticationFilter;
+import com.marianna.gateway.security.JwtAuthFilter;
 
 @Configuration
 public class SecurityConfig {
 
-        private final JwtAuthenticationFilter jwtFilter;
+        private final JwtAuthFilter jwtFilter;
 
-        public SecurityConfig(JwtAuthenticationFilter jwtFilter) {
+        public SecurityConfig(JwtAuthFilter jwtFilter) {
             this.jwtFilter = jwtFilter;
         }
 
@@ -44,9 +44,7 @@ public class SecurityConfig {
             
         )
 
-        .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-        // if you use JWT, you'll later replace this with JWT filter
-        .httpBasic(Customizer.withDefaults());
+        .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
 

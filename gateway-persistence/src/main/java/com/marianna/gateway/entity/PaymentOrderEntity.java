@@ -29,7 +29,7 @@ public class PaymentOrderEntity {
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal amount;
 
-    @Column(nullable = false, length = 3)
+    @Column(nullable = false, columnDefinition = "CHAR(3)")
     @Enumerated(EnumType.STRING)
     private Currency currency;
 

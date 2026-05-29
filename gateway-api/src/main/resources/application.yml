@@ -28,11 +28,11 @@ server:
     include-message: always
 
 jwt:
-  secret: "this-is-a-super-secure-and-ultra-long-secret-key-for-marianna-payment-gateway-2026="
+  secret: ${JWT_SECRET:this-is-a-super-secure-and-ultra-long-secret-key-for-marianna-payment-gateway-2026=}
   expiration-ms: 3600000
 
 auth:
-  api-key: "whatever"
+  api-key: ${AUTH_API_KEY:whatever}
 
 springdoc:
   swagger-ui:

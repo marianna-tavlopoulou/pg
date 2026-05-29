@@ -12,7 +12,7 @@ public record PaymentOrder(
     UUID id,
     UUID merchantId,
     BigDecimal amount,
-    String currency,
+    Currency currency,
     PaymentMethod method,
     PaymentStatus status,
     String idempotencyKey,
@@ -21,7 +21,7 @@ public record PaymentOrder(
     Instant updatedAt
 ) {
     public static PaymentOrder create(UUID merchantId, BigDecimal amount,
-            String currency, PaymentMethod method,
+            Currency currency, PaymentMethod method,
             String idempotencyKey, String description) {
         return new PaymentOrder(UUID.randomUUID(), merchantId, amount, currency,
                 method, PaymentStatus.PENDING, idempotencyKey, description,

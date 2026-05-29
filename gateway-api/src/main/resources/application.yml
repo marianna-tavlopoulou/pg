@@ -32,7 +32,7 @@ jwt:
   expiration-ms: 3600000
 
 auth:
-  api-key: ${AUTH_API_KEY:whatever}
+  api-key: ${AUTH_API_KEY:local-dev-only}
 
 springdoc:
   swagger-ui:

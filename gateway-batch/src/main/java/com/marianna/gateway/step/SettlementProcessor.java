@@ -11,6 +11,6 @@ public class SettlementProcessor implements ItemProcessor<PaymentOrder, Settleme
     @Override
     public SettlementRecord process(PaymentOrder order) {
         return new SettlementRecord(order.id().toString(), order.merchantId().toString(),
-            order.amount(), order.currency(), order.method().name(), Instant.now().toString());
+            order.amount(), order.currency(), order.method().name(), order.updatedAt().toString());
     }
 }

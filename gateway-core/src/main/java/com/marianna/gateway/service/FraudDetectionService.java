@@ -1,6 +1,7 @@
 package com.marianna.gateway.service;
 
 import com.marianna.gateway.domain.FraudSignal;
+import com.marianna.gateway.domain.PaymentMethod;
 import com.marianna.gateway.domain.PaymentOrder;
 import com.marianna.gateway.port.FraudEvaluator;
 import org.springframework.stereotype.Service;
@@ -26,8 +27,8 @@ public class FraudDetectionService implements FraudEvaluator {
             risk += 25; flags.add("HIGH_AMOUNT");
         }
 
-        if ("WALLET".equals(order.method().name()) && order.amount().compareTo(HIGH) > 0) {
-            risk += 25; flags.add("HIGH_WALLET_AMOUNT");
+        if (PaymentMethod.WALLET.equals(order.method()) && order.amount().compareTo(HIGH) > 0) {
+            risk += 15; flags.add("HIGH_WALLET_AMOUNT");
         }
 
         // TODO Week 3: add Redis velocity check

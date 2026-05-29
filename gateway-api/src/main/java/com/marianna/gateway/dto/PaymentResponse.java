@@ -1,5 +1,6 @@
 package com.marianna.gateway.dto;
 
+import com.marianna.gateway.domain.Currency;
 import com.marianna.gateway.domain.PaymentMethod;
 import com.marianna.gateway.domain.PaymentOrder;
 import com.marianna.gateway.domain.PaymentStatus;
@@ -9,7 +10,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record PaymentResponse(
-    UUID id, BigDecimal amount, String currency,
+    UUID id, BigDecimal amount, Currency currency,
     PaymentMethod method, PaymentStatus status,
     String description, Instant createdAt, Instant updatedAt
 ) {

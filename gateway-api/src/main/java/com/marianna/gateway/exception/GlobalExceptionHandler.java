@@ -27,6 +27,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return p;
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    ProblemDetail handleIllegalArgument(IllegalArgumentException ex) {
+    var p = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    p.setTitle("Invalid Request");
+    return p;
+}
+
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex, HttpHeaders headers,

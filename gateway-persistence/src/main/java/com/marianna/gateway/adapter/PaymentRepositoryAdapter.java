@@ -1,11 +1,13 @@
 package com.marianna.gateway.adapter;
 
-import com.marianna.gateway.domain.Currency;
 import com.marianna.gateway.domain.PaymentOrder;
 import com.marianna.gateway.domain.PaymentStatus;
 import com.marianna.gateway.entity.PaymentOrderEntity;
 import com.marianna.gateway.port.PaymentRepository;
 import com.marianna.gateway.repository.PaymentOrderJpaRepository;
+
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -13,20 +15,36 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Component
+@Slf4j
 public class PaymentRepositoryAdapter implements PaymentRepository {
 
     private final PaymentOrderJpaRepository jpa;
 
     public PaymentRepositoryAdapter(PaymentOrderJpaRepository jpa) { this.jpa = jpa; }
 
-    @Override public PaymentOrder save(PaymentOrder o) { return toDomain(jpa.save(toEntity(o))); }
+    @Override public PaymentOrder save(PaymentOrder o) { 
+        PaymentOrderEntity entityToSave = jpa.findById(o.id())
+        .map(existingEntity -> updateExistingEntity(existingEntity, o))
+        .orElseGet(() -> createNewEntity(o));
+        return toDomain(jpa.save(entityToSave)); }
+
     @Override public Optional<PaymentOrder> findById(UUID id) { return jpa.findById(id).map(this::toDomain); }
+
     @Override public Optional<PaymentOrder> findByIdempotencyKey(String key) { return jpa.findByIdempotencyKey(key).map(this::toDomain); }
+
     @Override public List<PaymentOrder> findByMerchantIdAndStatus(UUID mid, PaymentStatus s) {
         return jpa.findByMerchantIdAndStatus(mid, s).stream().map(this::toDomain).toList();
     }
 
-    private PaymentOrderEntity toEntity(PaymentOrder o) {
+    private PaymentOrderEntity updateExistingEntity(PaymentOrderEntity e, PaymentOrder o) {
+        log.info("Updating entity with id {}", o.id());
+        e.setStatus(o.status());
+        e.setDescription(o.description());
+        return e;
+    }
+
+    private PaymentOrderEntity createNewEntity(PaymentOrder o) {
+        log.info("Saving entity with id {}", o.id());
         var e = new PaymentOrderEntity();
         e.setId(o.id()); e.setMerchantId(o.merchantId()); e.setAmount(o.amount());
         e.setCurrency(o.currency()); e.setMethod(o.method()); e.setStatus(o.status());

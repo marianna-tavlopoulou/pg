@@ -6,6 +6,7 @@ import com.marianna.gateway.domain.PaymentStatus;
 import com.marianna.gateway.port.FraudEvaluator;
 import com.marianna.gateway.port.PaymentRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -21,6 +22,7 @@ public class PaymentService {
         this.fraudEvaluator = fraudEvaluator;
     }
 
+    @Transactional
     public PaymentOrder submit(PaymentOrder order) {
         // Idempotency: return existing result if key seen before
         Optional<PaymentOrder> existing = paymentRepository.findByIdempotencyKey(order.idempotencyKey());

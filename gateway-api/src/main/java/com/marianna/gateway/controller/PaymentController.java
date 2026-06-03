@@ -6,6 +6,7 @@ import com.marianna.gateway.dto.PaymentResponse;
 import com.marianna.gateway.exception.PaymentNotFoundException;
 import com.marianna.gateway.service.PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -18,6 +19,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/payments")
 @Tag(name = "Payments", description = "Payment processing endpoints")
+@SecurityRequirement(name = "Bearer")
 public class PaymentController {
 
     private final PaymentService paymentService;

@@ -36,15 +36,19 @@ public class PaymentRepositoryAdapter implements PaymentRepository {
         return jpa.findByMerchantIdAndStatus(mid, s).stream().map(this::toDomain).toList();
     }
 
+    /**    
+     * Only status and description are mutable after creation.
+     * Amount, currency, method are immutable — intentional.
+     */
     private PaymentOrderEntity updateExistingEntity(PaymentOrderEntity e, PaymentOrder o) {
-        log.info("Updating entity with id {}", o.id());
+        log.debug("Updating entity with id {}", o.id());
         e.setStatus(o.status());
         e.setDescription(o.description());
         return e;
     }
 
     private PaymentOrderEntity createNewEntity(PaymentOrder o) {
-        log.info("Saving entity with id {}", o.id());
+        log.debug("Saving entity with id {}", o.id());
         var e = new PaymentOrderEntity();
         e.setId(o.id()); e.setMerchantId(o.merchantId()); e.setAmount(o.amount());
         e.setCurrency(o.currency()); e.setMethod(o.method()); e.setStatus(o.status());

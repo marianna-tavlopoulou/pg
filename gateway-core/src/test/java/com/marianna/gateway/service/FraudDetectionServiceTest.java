@@ -1,8 +1,6 @@
 package com.marianna.gateway.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -35,7 +33,8 @@ public class FraudDetectionServiceTest {
         PaymentOrder order = PaymentOrder.create(UUID.randomUUID(), new BigDecimal(5500), Currency.EUR, PaymentMethod.WALLET, "idem-stub-key-0001", "test wallet with high amount");
         FraudSignal fraudSignal = fraudDetectionService.evaluate(order);
         assertThat(fraudSignal.flags()).hasSize(2).contains("HIGH_AMOUNT", "HIGH_WALLET_AMOUNT");
-        assertFalse(fraudSignal.shouldDecline());
+        assertThat(fraudSignal.shouldDecline()).isFalse();
+        assertThat(fraudSignal.riskScore()).isEqualTo(40);
 
     }
 

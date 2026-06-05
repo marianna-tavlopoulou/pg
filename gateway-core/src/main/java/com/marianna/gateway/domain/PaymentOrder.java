@@ -6,20 +6,20 @@ import java.util.UUID;
 
 /**
  * Core domain object — zero JPA/Spring annotations.
- * Interview talking point: hexagonal architecture keeps domain pure and testable.
+ * Interview talking point: hexagonal architecture keeps domain pure and
+ * testable.
  */
 public record PaymentOrder(
-    UUID id,
-    UUID merchantId,
-    BigDecimal amount,
-    Currency currency,
-    PaymentMethod method,
-    PaymentStatus status,
-    String idempotencyKey,
-    String description,
-    Instant createdAt,
-    Instant updatedAt
-) {
+        UUID id,
+        UUID merchantId,
+        BigDecimal amount,
+        Currency currency,
+        PaymentMethod method,
+        PaymentStatus status,
+        String idempotencyKey,
+        String description,
+        Instant createdAt,
+        Instant updatedAt) {
     public static PaymentOrder create(UUID merchantId, BigDecimal amount,
             Currency currency, PaymentMethod method,
             String idempotencyKey, String description) {
@@ -31,7 +31,7 @@ public record PaymentOrder(
     public PaymentOrder withStatus(PaymentStatus newStatus) {
         if (!this.status.canTransitionTo(newStatus)) {
             throw new IllegalStateException(
-                "Cannot transition %s from %s to %s".formatted(id, status, newStatus));
+                    "Cannot transition %s from %s to %s".formatted(id, status, newStatus));
         }
         return new PaymentOrder(id, merchantId, amount, currency, method,
                 newStatus, idempotencyKey, description, createdAt, Instant.now());

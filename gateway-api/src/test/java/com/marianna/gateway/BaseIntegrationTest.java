@@ -18,13 +18,13 @@ public abstract class BaseIntegrationTest {
     // non-static = new container per test class (slower, but fully isolated)
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-                                                .withDatabaseName("payment_gateway_test")
-                                                .withUsername("gateway")
-                                                .withPassword("gateway_pass");
+            .withDatabaseName("payment_gateway_test")
+            .withUsername("gateway")
+            .withPassword("gateway_pass");
 
     @Container
     static GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine")
-                                            .withExposedPorts(6379);
+            .withExposedPorts(6379);
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {

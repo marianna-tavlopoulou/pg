@@ -1,8 +1,5 @@
 package com.marianna.gateway.job;
 
-import com.marianna.gateway.domain.PaymentOrder;
-import com.marianna.gateway.step.SettlementProcessor;
-import com.marianna.gateway.step.SettlementRecord;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.job.builder.JobBuilder;
@@ -15,6 +12,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.transaction.PlatformTransactionManager;
 
+import com.marianna.gateway.domain.PaymentOrder;
+import com.marianna.gateway.step.SettlementProcessor;
+import com.marianna.gateway.step.SettlementRecord;
+
 /**
  * Spring Batch daily settlement job — same pattern used at SWIFT.
  * Chunk size 100: reads 100 records, processes, writes, commits. Repeat.
@@ -26,21 +27,21 @@ public class DailySettlementJob {
     @Bean
     public Job settlementJob(JobRepository jobRepository, Step settlementStep) {
         return new JobBuilder("dailySettlementJob", jobRepository)
-            .start(settlementStep).build();
+                .start(settlementStep).build();
     }
 
     @Bean
     public Step settlementStep(JobRepository jobRepository,
-                               PlatformTransactionManager tx,
-                               SettlementProcessor processor,
-                               FlatFileItemWriter<SettlementRecord> csvWriter) {
+            PlatformTransactionManager tx,
+            SettlementProcessor processor,
+            FlatFileItemWriter<SettlementRecord> csvWriter) {
         return new StepBuilder("settlementStep", jobRepository)
-            .<PaymentOrder, SettlementRecord>chunk(100, tx)
-            .reader(itemReader())
-            .processor(processor)
-            .writer(csvWriter)
-            .faultTolerant().skipLimit(10).skip(Exception.class)
-            .build();
+                .<PaymentOrder, SettlementRecord>chunk(100, tx)
+                .reader(itemReader())
+                .processor(processor)
+                .writer(csvWriter)
+                .faultTolerant().skipLimit(10).skip(Exception.class)
+                .build();
     }
 
     @Bean
@@ -53,11 +54,11 @@ public class DailySettlementJob {
     @Bean
     public FlatFileItemWriter<SettlementRecord> csvWriter() {
         return new FlatFileItemWriterBuilder<SettlementRecord>()
-            .name("settlementCsvWriter")
-            .resource(new FileSystemResource("output/settlement-report.csv"))
-            .delimited().delimiter(",")
-            .names("paymentId","merchantId","amount","currency","method","processedAt")
-            .headerCallback(w -> w.write("payment_id,merchant_id,amount,currency,method,processed_at"))
-            .build();
+                .name("settlementCsvWriter")
+                .resource(new FileSystemResource("output/settlement-report.csv"))
+                .delimited().delimiter(",")
+                .names("paymentId", "merchantId", "amount", "currency", "method", "processedAt")
+                .headerCallback(w -> w.write("payment_id,merchant_id,amount,currency,method,processed_at"))
+                .build();
     }
 }

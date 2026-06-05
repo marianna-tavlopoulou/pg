@@ -9,12 +9,10 @@ public enum Currency {
 
     USD, EUR, GBP;
 
-    private static final Map<String, Currency> LOOKUP =
-        Arrays.stream(values())
-              .collect(Collectors.toMap(
-                  c -> c.name().toUpperCase(),
-                  Function.identity()
-              ));
+    private static final Map<String, Currency> LOOKUP = Arrays.stream(values())
+            .collect(Collectors.toMap(
+                    c -> c.name().toUpperCase(),
+                    Function.identity()));
 
     public static Currency from(String value) {
 
@@ -26,8 +24,7 @@ public enum Currency {
 
         if (currency == null) {
             throw new IllegalArgumentException(
-                "Invalid currency: " + value
-            );
+                    "Invalid currency: " + value);
         }
 
         return currency;

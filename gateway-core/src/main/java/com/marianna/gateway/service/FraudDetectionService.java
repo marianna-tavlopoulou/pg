@@ -1,14 +1,15 @@
 package com.marianna.gateway.service;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
 import com.marianna.gateway.domain.FraudSignal;
 import com.marianna.gateway.domain.PaymentMethod;
 import com.marianna.gateway.domain.PaymentOrder;
 import com.marianna.gateway.port.FraudEvaluator;
-import org.springframework.stereotype.Service;
-
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
 
 @Service
 public class FraudDetectionService implements FraudEvaluator {
@@ -22,17 +23,20 @@ public class FraudDetectionService implements FraudEvaluator {
         List<String> flags = new ArrayList<>();
 
         if (order.amount().compareTo(VERY_HIGH) > 0) {
-            risk += 50; flags.add("VERY_HIGH_AMOUNT");
+            risk += 75;
+            flags.add("VERY_HIGH_AMOUNT");
         } else if (order.amount().compareTo(HIGH) > 0) {
-            risk += 25; flags.add("HIGH_AMOUNT");
+            risk += 25;
+            flags.add("HIGH_AMOUNT");
         }
 
         if (PaymentMethod.WALLET.equals(order.method()) && order.amount().compareTo(HIGH) > 0) {
-            risk += 15; flags.add("HIGH_WALLET_AMOUNT");
+            risk += 15;
+            flags.add("HIGH_WALLET_AMOUNT");
         }
 
         // TODO Week 3: add Redis velocity check
         return flags.isEmpty() ? FraudSignal.clean(order.id())
-                               : FraudSignal.risky(order.id(), risk, flags);
+                : FraudSignal.risky(order.id(), risk, flags);
     }
 }

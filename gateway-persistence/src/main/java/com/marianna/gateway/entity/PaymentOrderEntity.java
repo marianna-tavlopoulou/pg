@@ -1,26 +1,39 @@
 package com.marianna.gateway.entity;
 
-import com.marianna.gateway.domain.Currency;
-import com.marianna.gateway.domain.PaymentMethod;
-import com.marianna.gateway.domain.PaymentStatus;
-import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+import com.marianna.gateway.domain.Currency;
+import com.marianna.gateway.domain.PaymentMethod;
+import com.marianna.gateway.domain.PaymentStatus;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 @Entity
 @Table(name = "payment_orders", indexes = {
-    @Index(name = "idx_idempotency_key", columnList = "idempotency_key", unique = true),
-    @Index(name = "idx_merchant_status", columnList = "merchant_id, status")
+        @Index(name = "idx_idempotency_key", columnList = "idempotency_key", unique = true),
+        @Index(name = "idx_merchant_status", columnList = "merchant_id, status")
 })
-@Getter @Setter @NoArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
 public class PaymentOrderEntity {
 
-    @Id @Column(columnDefinition = "uuid")
+    @Id
+    @Column(columnDefinition = "uuid")
     private UUID id;
 
     @Column(name = "merchant_id", nullable = false, columnDefinition = "uuid")
@@ -33,10 +46,12 @@ public class PaymentOrderEntity {
     @Enumerated(EnumType.STRING)
     private Currency currency;
 
-    @Enumerated(EnumType.STRING) @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private PaymentMethod method;
 
-    @Enumerated(EnumType.STRING) @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private PaymentStatus status;
 
     @Column(name = "idempotency_key", nullable = false, unique = true)

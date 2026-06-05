@@ -34,10 +34,8 @@ public class FraudDetectionServiceTest {
 
         PaymentOrder order = PaymentOrder.create(UUID.randomUUID(), new BigDecimal(5500), Currency.EUR, PaymentMethod.WALLET, "idem-stub-key-0001", "test wallet with high amount");
         FraudSignal fraudSignal = fraudDetectionService.evaluate(order);
-        assertFalse(fraudSignal.flags().isEmpty());
-        assertThat(fraudSignal.flags().size() == 1);
+        assertThat(fraudSignal.flags()).hasSize(2).contains("HIGH_AMOUNT", "HIGH_WALLET_AMOUNT");
         assertFalse(fraudSignal.shouldDecline());
-        assertEquals(fraudSignal.flags().get(0), "HIGH_AMOUNT");
 
     }
 

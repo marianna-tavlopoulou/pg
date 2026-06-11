@@ -22,6 +22,7 @@ public class FraudDetectionService implements FraudEvaluator {
 
     // Thresholds: review at 40, decline at 70
     private static final int VELOCITY_SCORE = 30;
+    private static final int DUPLICATE_AMOUNT_SCORE = 25; // same amount repeated = probing
     private static final int HIGH_AMOUNT_SCORE = 25;
     private static final int VERY_HIGH_AMOUNT_SCORE = 75;
     private static final int HIGH_WALLET_SCORE = 15;
@@ -56,7 +57,7 @@ public class FraudDetectionService implements FraudEvaluator {
         }
 
         if (velocityCheckPort.getDuplicateAmountCount(order.customerId().toString(), order.amount()) >= 2) {
-            risk += VELOCITY_SCORE;
+            risk += DUPLICATE_AMOUNT_SCORE;
             flags.add("DUPLICATE_AMOUNT");
         }
         return flags.isEmpty() ? FraudSignal.clean(order.id()) // the score is also zero

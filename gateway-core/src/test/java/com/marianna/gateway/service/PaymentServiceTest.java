@@ -95,7 +95,7 @@ class PaymentServiceTest {
     }
 
     private PaymentOrder buildOrder(BigDecimal amount, PaymentMethod paymentMethod) {
-        return PaymentOrder.create(UUID.randomUUID(), amount, Currency.EUR,
+        return PaymentOrder.create(UUID.randomUUID(), UUID.randomUUID(), amount, Currency.EUR,
                 paymentMethod, UUID.randomUUID().toString(), "Test");
     }
 }

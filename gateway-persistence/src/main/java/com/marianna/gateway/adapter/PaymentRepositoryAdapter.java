@@ -62,6 +62,7 @@ public class PaymentRepositoryAdapter implements PaymentRepository {
         log.debug("Saving entity with id {}", o.id());
         var e = new PaymentOrderEntity();
         e.setId(o.id());
+        e.setCustomerId(o.customerId());
         e.setMerchantId(o.merchantId());
         e.setAmount(o.amount());
         e.setCurrency(o.currency());
@@ -75,7 +76,7 @@ public class PaymentRepositoryAdapter implements PaymentRepository {
     }
 
     private PaymentOrder toDomain(PaymentOrderEntity e) {
-        return new PaymentOrder(e.getId(), e.getMerchantId(), e.getAmount(), e.getCurrency(),
+        return new PaymentOrder(e.getId(), e.getCustomerId(), e.getMerchantId(), e.getAmount(), e.getCurrency(),
                 e.getMethod(), e.getStatus(), e.getIdempotencyKey(), e.getDescription(),
                 e.getCreatedAt(), e.getUpdatedAt());
     }

@@ -7,9 +7,9 @@ public interface VelocityCheckPort {
 
     int getTransactionCounts(String customerId, Duration window);
 
-    void recordTransaction(String customerId, String transactionId);
+    void recordTransaction(String customerId, String transactionId, BigDecimal amount);
 
-    int getDuplicateAmountCount(String customerId, BigDecimal amount, Duration window);
+    int getDuplicateAmountCount(String customerId, BigDecimal amount);
 
     boolean isVelocityExceeded(String customerId);
 

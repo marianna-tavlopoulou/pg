@@ -11,6 +11,7 @@ import java.util.UUID;
  */
 public record PaymentOrder(
         UUID id,
+        UUID customerId,
         UUID merchantId,
         BigDecimal amount,
         Currency currency,
@@ -20,10 +21,10 @@ public record PaymentOrder(
         String description,
         Instant createdAt,
         Instant updatedAt) {
-    public static PaymentOrder create(UUID merchantId, BigDecimal amount,
+    public static PaymentOrder create(UUID customerId, UUID merchantId, BigDecimal amount,
             Currency currency, PaymentMethod method,
             String idempotencyKey, String description) {
-        return new PaymentOrder(UUID.randomUUID(), merchantId, amount, currency,
+        return new PaymentOrder(UUID.randomUUID(), customerId, merchantId, amount, currency,
                 method, PaymentStatus.PENDING, idempotencyKey, description,
                 Instant.now(), Instant.now());
     }
@@ -33,7 +34,7 @@ public record PaymentOrder(
             throw new IllegalStateException(
                     "Cannot transition %s from %s to %s".formatted(id, status, newStatus));
         }
-        return new PaymentOrder(id, merchantId, amount, currency, method,
+        return new PaymentOrder(id, customerId, merchantId, amount, currency, method,
                 newStatus, idempotencyKey, description, createdAt, Instant.now());
     }
 }

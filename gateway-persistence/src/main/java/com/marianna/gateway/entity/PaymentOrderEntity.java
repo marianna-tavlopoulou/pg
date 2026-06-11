@@ -36,6 +36,9 @@ public class PaymentOrderEntity {
     @Column(columnDefinition = "uuid")
     private UUID id;
 
+    @Column(name = "customer_id", nullable = false, columnDefinition = "uuid")
+    private UUID customerId;
+
     @Column(name = "merchant_id", nullable = false, columnDefinition = "uuid")
     private UUID merchantId;
 

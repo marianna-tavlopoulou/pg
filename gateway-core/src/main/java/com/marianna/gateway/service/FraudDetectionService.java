@@ -12,7 +12,10 @@ import com.marianna.gateway.domain.PaymentOrder;
 import com.marianna.gateway.port.FraudEvaluator;
 import com.marianna.gateway.port.VelocityCheckPort;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class FraudDetectionService implements FraudEvaluator {
 
     private final VelocityCheckPort velocityCheckPort;
@@ -60,6 +63,11 @@ public class FraudDetectionService implements FraudEvaluator {
             risk += DUPLICATE_AMOUNT_SCORE;
             flags.add("DUPLICATE_AMOUNT");
         }
+        velocityCheckPort.recordTransaction(order.customerId().toString(), order.id().toString(), order.amount());
+
+        log.debug("Customer: {} | Total Risk: {} | Triggered Flags: {}",
+                order.customerId(), risk, String.join(", ", flags));
+
         return flags.isEmpty() ? FraudSignal.clean(order.id()) // the score is also zero
                 : FraudSignal.risky(order.id(), risk, flags);
     }

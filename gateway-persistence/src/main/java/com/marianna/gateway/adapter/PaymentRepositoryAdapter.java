@@ -52,14 +52,14 @@ public class PaymentRepositoryAdapter implements PaymentRepository {
      * Amount, currency, method are immutable — intentional.
      */
     private PaymentOrderEntity updateExistingEntity(PaymentOrderEntity e, PaymentOrder o) {
-        log.debug("Updating entity with id {}", o.id());
+        log.debug("Updating entity with id: {}", o.id());
         e.setStatus(o.status());
         e.setDescription(o.description());
         return e;
     }
 
     private PaymentOrderEntity createNewEntity(PaymentOrder o) {
-        log.debug("Saving entity with id {}", o.id());
+        log.debug("Saving entity with id: {}", o.id());
         var e = new PaymentOrderEntity();
         e.setId(o.id());
         e.setCustomerId(o.customerId());

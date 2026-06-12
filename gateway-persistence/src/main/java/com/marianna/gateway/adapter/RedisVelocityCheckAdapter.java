@@ -10,9 +10,11 @@ import org.springframework.stereotype.Component;
 import com.marianna.gateway.port.VelocityCheckPort;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class RedisVelocityCheckAdapter implements VelocityCheckPort {
 
     private final StringRedisTemplate redisTemplate;
@@ -22,12 +24,14 @@ public class RedisVelocityCheckAdapter implements VelocityCheckPort {
     private static final Duration WINDOW = Duration.ofMinutes(5);
 
     @Override
-    public int getTransactionCounts(String customerId, Duration window) {
+    public int getTransactionCounts(String customerId) {
 
         long now = Instant.now().toEpochMilli();
-        long windowStart = now - window.toMillis();
+        long windowStart = now - WINDOW.toMillis();
 
         Long count = redisTemplate.opsForZSet().count(key(VELOCITY_KEY, customerId), windowStart, now);
+
+        log.debug("Customer {} : | count: {}", customerId, count);
 
         return count == null ? 0 : count.intValue();
     }
@@ -36,11 +40,12 @@ public class RedisVelocityCheckAdapter implements VelocityCheckPort {
     public void recordTransaction(String customerId, String transactionId, BigDecimal amount) {
 
         long now = Instant.now().toEpochMilli();
+        long windowStart = now - WINDOW.toMillis();
 
         String vKey = key(VELOCITY_KEY, customerId);
         redisTemplate.opsForZSet().add(vKey, transactionId, now);
         // Expire old entries and set TTL so keys don't leak forever
-        redisTemplate.opsForZSet().removeRangeByScore(vKey, 0, now - WINDOW.toMillis());
+        redisTemplate.opsForZSet().removeRangeByScore(vKey, 0, now - windowStart);
         redisTemplate.expire(vKey, WINDOW.plusMinutes(1)); // The TTL is WINDOW.plusMinutes(1) not WINDOW. This is
                                                            // subtle but important: if a transaction arrives at t=0 and
                                                            // the TTL is exactly 5 minutes, Redis may evict the key at
@@ -51,7 +56,8 @@ public class RedisVelocityCheckAdapter implements VelocityCheckPort {
                                                            // entries; the TTL is just a safety net against key leakage.
         String aKey = key(AMOUNT_KEY, customerId) + ":" + amount.toPlainString();
         redisTemplate.opsForZSet().add(aKey, transactionId, now);
-        redisTemplate.opsForZSet().removeRangeByScore(aKey, 0, WINDOW.toMillis());
+        log.debug("Customer: {} | amount: {} --> Add transaction", customerId, amount);
+        redisTemplate.opsForZSet().removeRangeByScore(aKey, 0, windowStart);
         redisTemplate.expire(aKey, WINDOW.plusMinutes(1));
 
     }
@@ -59,18 +65,20 @@ public class RedisVelocityCheckAdapter implements VelocityCheckPort {
     @Override
     public boolean isVelocityExceeded(String customerId) {
 
-        return getTransactionCounts(customerId, WINDOW) >= MAX_TXN;
+        return getTransactionCounts(customerId) >= MAX_TXN;
     }
 
     @Override
     public int getDuplicateAmountCount(String customerId, BigDecimal amount) {
 
         long now = Instant.now().toEpochMilli();
-        long windowStart = WINDOW.toMillis();
+        long windowStart = now - WINDOW.toMillis();
 
         // Key encodes both customerId and the exact amount
         String amountKey = key(AMOUNT_KEY, customerId) + ":" + amount.toPlainString();
         Long count = redisTemplate.opsForZSet().count(amountKey, windowStart, now);
+
+        log.debug("Customer: {} | count: {} | amount: {}", customerId, count, amount);
         return count == null ? 0 : count.intValue();
 
     }

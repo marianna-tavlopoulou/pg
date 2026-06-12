@@ -8,48 +8,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.math.BigDecimal;
 import java.util.UUID;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marianna.gateway.domain.Currency;
 import com.marianna.gateway.domain.PaymentMethod;
 import com.marianna.gateway.domain.PaymentStatus;
-import com.marianna.gateway.dto.AuthRequest;
-import com.marianna.gateway.dto.AuthResponse;
 import com.marianna.gateway.dto.PaymentRequest;
 import com.marianna.gateway.dto.PaymentResponse;
 
 public class PaymentControllerIT extends BaseIntegrationTest {
-
-        @Autowired
-        MockMvc mockMvc;
-
-        @Autowired
-        ObjectMapper objectMapper;
-
-        private String jwtToken;
-
-        @BeforeEach
-        void authenticate() throws Exception {
-                // Get a real JWT before each test
-                String body = objectMapper.writeValueAsString(new AuthRequest("local-dev-only"));
-                MvcResult mvcResult = mockMvc.perform(
-                                post("/api/v1/auth/token")
-                                                .contentType(MediaType.APPLICATION_JSON)
-                                                .content(body))
-                                .andExpect(status().isOk())
-                                .andReturn();
-
-                AuthResponse response = objectMapper.readValue(mvcResult.getResponse().getContentAsString(),
-                                AuthResponse.class);
-                jwtToken = response.token();
-        }
 
         @Test
         @DisplayName("Valid payment completes successfully and returns 201")
@@ -58,17 +28,7 @@ public class PaymentControllerIT extends BaseIntegrationTest {
                 PaymentRequest request = new PaymentRequest(UUID.randomUUID(), new BigDecimal(1500), Currency.EUR,
                                 PaymentMethod.CARD, "Order #1");
 
-                MvcResult mvcResult = mockMvc.perform(
-                                post("/api/v1/payments")
-                                                .header("Authorization", "Bearer " + jwtToken)
-                                                .header("Idempotency-Key", UUID.randomUUID().toString())
-                                                .contentType(MediaType.APPLICATION_JSON)
-                                                .content(objectMapper.writeValueAsString(request)))
-                                .andExpect(status().isCreated())
-                                .andReturn();
-
-                PaymentResponse response = objectMapper.readValue(mvcResult.getResponse().getContentAsString(),
-                                PaymentResponse.class);
+                PaymentResponse response = createPayment(request, UUID.randomUUID().toString());
                 assertThat(response.amount()).isEqualByComparingTo(new BigDecimal(1500));
                 assertThat(response.currency()).isEqualTo(Currency.EUR);
                 assertThat(response.id()).isNotNull();
@@ -77,40 +37,40 @@ public class PaymentControllerIT extends BaseIntegrationTest {
         }
 
         @Test
-        @DisplayName("Send paymentwith  same Idempotency-Key twice, second response should be identical, still 201")
+        @DisplayName("Should retrieve existing payment")
+        void shouldRetrieveExistingPayment() throws Exception {
+                PaymentRequest request = new PaymentRequest(UUID.randomUUID(), new BigDecimal(1500), Currency.EUR,
+                                PaymentMethod.CARD, "Order #1");
+                String idempotenceKey = UUID.randomUUID().toString();
+
+                PaymentResponse response = createPayment(request, idempotenceKey);
+                assertThat(response.amount()).isEqualByComparingTo(new BigDecimal(1500));
+                assertThat(response.currency()).isEqualTo(Currency.EUR);
+                assertThat(response.id()).isNotNull();
+                assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
+
+                PaymentResponse response2 = getPayment(response.id().toString());
+                assertThat(response2.amount()).isEqualByComparingTo(response.amount());
+                assertThat(response2.currency()).isEqualTo(Currency.EUR);
+                assertThat(response2.id()).isEqualTo(response.id());
+                assertThat(response2.status()).isEqualTo(PaymentStatus.COMPLETED);
+        }
+
+        @Test
+        @DisplayName("Send payment with  same Idempotency-Key twice, second response should be identical, still 201")
         void shouldReturnIdenticalPayment() throws Exception {
 
                 PaymentRequest request = new PaymentRequest(UUID.randomUUID(), new BigDecimal(1500), Currency.EUR,
                                 PaymentMethod.CARD, "Order #1");
                 String idempotenceKey = UUID.randomUUID().toString();
 
-                MvcResult mvcResult = mockMvc.perform(
-                                post("/api/v1/payments")
-                                                .header("Authorization", "Bearer " + jwtToken)
-                                                .header("Idempotency-Key", idempotenceKey)
-                                                .contentType(MediaType.APPLICATION_JSON)
-                                                .content(objectMapper.writeValueAsString(request)))
-                                .andExpect(status().isCreated())
-                                .andReturn();
-
-                PaymentResponse response = objectMapper.readValue(mvcResult.getResponse().getContentAsString(),
-                                PaymentResponse.class);
+                PaymentResponse response = createPayment(request, idempotenceKey);
                 assertThat(response.amount()).isEqualByComparingTo(new BigDecimal(1500));
                 assertThat(response.currency()).isEqualTo(Currency.EUR);
                 assertThat(response.id()).isNotNull();
                 assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
 
-                MvcResult mvcResult2 = mockMvc.perform(
-                                post("/api/v1/payments")
-                                                .header("Authorization", "Bearer " + jwtToken)
-                                                .header("Idempotency-Key", idempotenceKey)
-                                                .contentType(MediaType.APPLICATION_JSON)
-                                                .content(objectMapper.writeValueAsString(request)))
-                                .andExpect(status().isCreated())
-                                .andReturn();
-
-                PaymentResponse response2 = objectMapper.readValue(mvcResult.getResponse().getContentAsString(),
-                                PaymentResponse.class);
+                PaymentResponse response2 = createPayment(request, idempotenceKey);
                 assertThat(response2.amount()).isEqualTo(response.amount());
                 assertThat(response2.id()).isEqualTo(response.id());
                 assertThat(response2.status()).isEqualTo(response.status());
@@ -122,6 +82,42 @@ public class PaymentControllerIT extends BaseIntegrationTest {
         }
 
         @Test
+        @DisplayName("Missing Idempotency-Key should return 400")
+        void shouldReturn400WhenIdempotencyKeyMissing() throws Exception {
+                PaymentRequest request = new PaymentRequest(UUID.randomUUID(), new BigDecimal(1500), Currency.EUR,
+                                PaymentMethod.CARD, "Order #1");
+
+                assertBadRequest(request, null);
+        }
+
+        @Test
+        @DisplayName("Amount zero should return 400")
+        void shouldRejectZeroAmount() throws Exception {
+                PaymentRequest request = new PaymentRequest(UUID.randomUUID(), new BigDecimal(0), Currency.EUR,
+                                PaymentMethod.CARD, "Order #1");
+
+                assertBadRequest(request, UUID.randomUUID().toString());
+        }
+
+        @Test
+        @DisplayName("Negative amount should return 400")
+        void shouldRejectNegativeAmount() throws Exception {
+                PaymentRequest request = new PaymentRequest(UUID.randomUUID(), new BigDecimal(-10), Currency.EUR,
+                                PaymentMethod.CARD, "Order #1");
+
+                assertBadRequest(request, UUID.randomUUID().toString());
+        }
+
+        @Test
+        @DisplayName("Missing customerId should return 400")
+        void shouldRejectNullCustomerId() throws Exception {
+                PaymentRequest request = new PaymentRequest(null, new BigDecimal(10), Currency.EUR,
+                                PaymentMethod.CARD, "Order #1");
+
+                assertBadRequest(request, UUID.randomUUID().toString());
+        }
+
+        @Test
         @DisplayName("Payments with amount 15000 → status DECLINED")
         void shouldDeclinePaymentWithVeryHighAmount() throws Exception {
 
@@ -129,17 +125,7 @@ public class PaymentControllerIT extends BaseIntegrationTest {
                                 PaymentMethod.CARD,
                                 "Order #1");
 
-                MvcResult mvcResult = mockMvc.perform(
-                                post("/api/v1/payments")
-                                                .header("Authorization", "Bearer " + jwtToken)
-                                                .header("Idempotency-Key", UUID.randomUUID().toString())
-                                                .contentType(MediaType.APPLICATION_JSON)
-                                                .content(objectMapper.writeValueAsString(request)))
-                                .andExpect(status().isCreated())
-                                .andReturn();
-
-                PaymentResponse response = objectMapper.readValue(mvcResult.getResponse().getContentAsString(),
-                                PaymentResponse.class);
+                PaymentResponse response = createPayment(request, UUID.randomUUID().toString());
                 assertThat(response.amount()).isEqualByComparingTo(new BigDecimal(15000));
                 assertThat(response.currency()).isEqualTo(Currency.EUR);
                 assertThat(response.id()).isNotNull();
@@ -153,7 +139,7 @@ public class PaymentControllerIT extends BaseIntegrationTest {
 
                 MvcResult mvcResult = mockMvc.perform(
                                 get("/api/v1/payments/{id}", UUID.randomUUID())
-                                                .header("Authorization", "Bearer " + jwtToken)
+                                                .header("Authorization", "Bearer " + authToken())
                                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isNotFound())
                                 .andReturn();

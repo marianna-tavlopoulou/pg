@@ -1,19 +1,20 @@
 package com.marianna.gateway;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.jupiter.api.BeforeEach;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.IntStream;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.marianna.gateway.dto.AuthRequest;
-import com.marianna.gateway.dto.AuthResponse;
+import com.marianna.gateway.domain.Currency;
+import com.marianna.gateway.domain.PaymentMethod;
+import com.marianna.gateway.domain.PaymentStatus;
+import com.marianna.gateway.dto.PaymentRequest;
+import com.marianna.gateway.dto.PaymentResponse;
 
 /**
  * Fraud Risk Matrix
@@ -41,38 +42,75 @@ import com.marianna.gateway.dto.AuthResponse;
  */
 public class FraudDetectionIT extends BaseIntegrationTest {
 
-    @Autowired
-    MockMvc mockMvc;
-
-    @Autowired
-    ObjectMapper objectMapper;
-
-    private String jwtToken;
-
-    @BeforeEach
-    void authenticate() throws Exception {
-        // Get a real JWT before each test
-        String body = objectMapper.writeValueAsString(new AuthRequest("local-dev-only"));
-        MvcResult mvcResult = mockMvc.perform(
-                post("/api/v1/auth/token")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        AuthResponse response = objectMapper.readValue(mvcResult.getResponse().getContentAsString(),
-                AuthResponse.class);
-        jwtToken = response.token();
+    private PaymentRequest createPaymentRequest(int amount, PaymentMethod method) {
+        return new PaymentRequest(UUID.randomUUID(), new BigDecimal(amount), Currency.EUR, method,
+                "order #1");
     }
 
     @Test
     @DisplayName("""
-            RULE:
-            None → 0 → CLEAN
-            Normal transaction, no risk indicators
+            None → CLEAN (0 score)
+            Normal transaction should be approved
             """)
-    void shouldBeCleanForNormalTransaction() throws Exception {
+    void shouldApproveNormalTransaction() throws Exception {
+        PaymentResponse response = createPayment(createPaymentRequest(500, PaymentMethod.CARD),
+                UUID.randomUUID().toString());
+        assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
+    }
 
+    @Test
+    @DisplayName("""
+            HIGH_AMOUNT only → CLEAN (25 score)
+            Large amount alone is not fraud
+            """)
+    void shouldAllowHighAmountOnly() throws Exception {
+        PaymentResponse response = createPayment(createPaymentRequest(9000, PaymentMethod.CARD),
+                UUID.randomUUID().toString());
+        assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
+    }
+
+    @Test
+    @DisplayName("""
+            VELOCITY only → CLEAN (30 score)
+            High frequency alone is not fraud
+            """)
+    void shouldAllowVelocityOnly() throws Exception {
+        List<Integer> range = IntStream.rangeClosed(100, 120)
+                .boxed()
+                .toList();
+        for (Integer i : range) {
+            createPayment(
+                    createPaymentRequest(i, PaymentMethod.CARD),
+                    UUID.randomUUID().toString());
+        }
+        PaymentResponse response = createPayment(createPaymentRequest(111, PaymentMethod.CARD),
+                UUID.randomUUID().toString());
+        assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
+    }
+
+    @Test
+    @DisplayName("""
+            DUPLICATE_AMOUNT only → CLEAN (25 score)
+            Recurring identical payments are allowed
+            """)
+    void shouldAllowDuplicateAmountOnly() throws Exception {
+
+        createPayment(createPaymentRequest(200, PaymentMethod.CARD), UUID.randomUUID().toString());
+        PaymentResponse response = createPayment(createPaymentRequest(200, PaymentMethod.CARD),
+                UUID.randomUUID().toString());
+
+        assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
+    }
+
+    @Test
+    @DisplayName("""
+            HIGH_AMOUNT + HIGH_WALLET → REVIEW (40 score)
+            Elevated risk requires manual review
+            """)
+    void shouldMarkHighAmountHighWalletAsReview() throws Exception {
+        PaymentResponse response = createPayment(createPaymentRequest(9000, PaymentMethod.WALLET),
+                UUID.randomUUID().toString());
+        assertThat(response.status()).isEqualTo(PaymentStatus.PROCESSING);
     }
 
 }

@@ -34,11 +34,14 @@ public class PaymentService {
         FraudSignal signal = fraudEvaluator.evaluate(saved);
 
         if (signal.shouldDecline()) {
-            return paymentRepository.save(saved.withStatus(PaymentStatus.DECLINED));
+            return paymentRepository.save(saved.withStatus(PaymentStatus.DECLINED)); // DECLINE: score >= 70
         }
 
-        PaymentOrder processing = paymentRepository.save(saved.withStatus(PaymentStatus.PROCESSING));
-        return paymentRepository.save(processing.withStatus(PaymentStatus.COMPLETED));
+        if (signal.riskScore() >= 40) {
+            return paymentRepository.save(saved.withStatus(PaymentStatus.PROCESSING)); // REVIEW: 40 <= score < 70
+        }
+
+        return paymentRepository.save(saved.withStatus(PaymentStatus.COMPLETED));
     }
 
     public Optional<PaymentOrder> findById(UUID id) {

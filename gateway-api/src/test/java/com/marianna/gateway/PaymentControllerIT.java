@@ -175,4 +175,21 @@ public class PaymentControllerIT extends BaseIntegrationTest {
                                 .andReturn();
         }
 
+        @Test
+        @DisplayName("Invalid JWT should return 401")
+        void shouldReturn401WhenTokenInvalid() throws Exception {
+                PaymentRequest request = new PaymentRequest(UUID.randomUUID(), new BigDecimal(1500), Currency.EUR,
+                                PaymentMethod.CARD,
+                                "Order #1");
+
+                MvcResult mvcResult = mockMvc.perform(
+                                post("/api/v1/payments")
+                                                .header("Authorization", "Bearer invalidToken")
+                                                .header("Idempotency-Key", UUID.randomUUID().toString())
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isUnauthorized())
+                                .andReturn();
+        }
+
 }

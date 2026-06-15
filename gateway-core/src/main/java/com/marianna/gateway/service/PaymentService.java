@@ -49,7 +49,11 @@ public class PaymentService {
         return paymentRepository.save(saved.withStatus(PaymentStatus.COMPLETED));
     }
 
-    public Optional<PaymentOrder> findById(UUID id) {
-        return paymentRepository.findById(id);
+    public Optional<PaymentOrder> findPaymentByIdForMerchant(UUID id, UUID merchantId) {
+        Optional<PaymentOrder> orderOptional = paymentRepository.findById(id);
+        if (orderOptional.isPresent() && orderOptional.get().merchantId().equals(merchantId)) {
+            return orderOptional;
+        }
+        return Optional.empty();
     }
 }

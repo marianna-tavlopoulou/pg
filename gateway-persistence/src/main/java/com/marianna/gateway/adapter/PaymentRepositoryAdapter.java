@@ -43,8 +43,8 @@ public class PaymentRepositoryAdapter implements PaymentRepository {
     }
 
     @Override
-    public List<PaymentOrder> findByMerchantIdAndStatus(UUID mid, PaymentStatus s) {
-        return jpa.findByMerchantIdAndStatus(mid, s).stream().map(this::toDomain).toList();
+    public List<PaymentOrder> findByMerchantIdAndStatus(UUID merchantId, PaymentStatus status) {
+        return jpa.findByMerchantIdAndStatus(merchantId, status).stream().map(this::toDomain).toList();
     }
 
     /**

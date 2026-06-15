@@ -1,6 +1,7 @@
 package com.marianna.gateway;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -148,6 +149,23 @@ public class PaymentControllerIT extends BaseIntegrationTest {
 
                 MvcResult mvcResult = mockMvc.perform(
                                 get("/api/v1/payments/{id}", UUID.randomUUID())
+                                                .header("Authorization", "Bearer " + authToken())
+                                                .contentType(MediaType.APPLICATION_JSON))
+                                .andExpect(status().isNotFound())
+                                .andReturn();
+        }
+
+        @Test
+        @DisplayName("Search payment with existant id but invalid merchant id should return 404")
+        void shouldReturn404WhenSearchingForExistantIdWithInvalidMerchantId() throws Exception {
+
+                PaymentRequest request = new PaymentRequest(UUID.randomUUID(), new BigDecimal(1500), Currency.EUR,
+                                PaymentMethod.CARD, "Order #1");
+                PaymentResponse response = createPayment(request, UUID.randomUUID().toString());
+
+                MvcResult mvcResult = mockMvc.perform(
+                                get("/api/v1/payments/{id}", response.id())
+                                                .with(user(UUID.randomUUID().toString()))
                                                 .header("Authorization", "Bearer " + authToken())
                                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isNotFound())

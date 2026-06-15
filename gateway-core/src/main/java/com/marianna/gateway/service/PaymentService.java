@@ -3,6 +3,7 @@ package com.marianna.gateway.service;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,11 +27,15 @@ public class PaymentService {
     @Transactional
     public PaymentOrder submit(PaymentOrder order) {
         // Idempotency: return existing result if key seen before
-        Optional<PaymentOrder> existing = paymentRepository.findByIdempotencyKey(order.idempotencyKey());
-        if (existing.isPresent())
-            return existing.get();
 
-        PaymentOrder saved = paymentRepository.save(order);
+        PaymentOrder saved;
+        try {
+            saved = paymentRepository.save(order);
+        } catch (DataIntegrityViolationException e) {
+            return paymentRepository.findByIdempotencyKey(order.idempotencyKey())
+                    .orElseThrow(() -> new DataIntegrityViolationException(
+                            "Duplicate key detected but existing record could not be retrieved", e));
+        }
         FraudSignal signal = fraudEvaluator.evaluate(saved);
 
         if (signal.shouldDecline()) {

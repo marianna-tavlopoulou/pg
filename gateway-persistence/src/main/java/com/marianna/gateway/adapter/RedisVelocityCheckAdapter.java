@@ -45,7 +45,7 @@ public class RedisVelocityCheckAdapter implements VelocityCheckPort {
         String vKey = key(VELOCITY_KEY, customerId);
         redisTemplate.opsForZSet().add(vKey, transactionId, now);
         // Expire old entries and set TTL so keys don't leak forever
-        redisTemplate.opsForZSet().removeRangeByScore(vKey, 0, now - windowStart);
+        redisTemplate.opsForZSet().removeRangeByScore(vKey, 0, windowStart);
         redisTemplate.expire(vKey, WINDOW.plusMinutes(1)); // The TTL is WINDOW.plusMinutes(1) not WINDOW. This is
                                                            // subtle but important: if a transaction arrives at t=0 and
                                                            // the TTL is exactly 5 minutes, Redis may evict the key at

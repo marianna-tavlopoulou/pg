@@ -48,7 +48,7 @@ public class DailySettlementJob {
     public org.springframework.batch.item.ItemReader<PaymentOrder> itemReader() {
         // TODO: inject PaymentOrderJpaRepository and read COMPLETED payments
         // Replace with RepositoryItemReader in Week 4
-        return () -> null;
+        throw new UnsupportedOperationException();
     }
 
     @Bean

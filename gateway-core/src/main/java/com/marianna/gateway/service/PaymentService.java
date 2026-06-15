@@ -13,7 +13,10 @@ import com.marianna.gateway.domain.PaymentStatus;
 import com.marianna.gateway.port.FraudEvaluator;
 import com.marianna.gateway.port.PaymentRepository;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class PaymentService {
 
     private final PaymentRepository paymentRepository;
@@ -39,13 +42,16 @@ public class PaymentService {
         FraudSignal signal = fraudEvaluator.evaluate(saved);
 
         if (signal.shouldDecline()) {
+            log.debug("Customer: {} | payment id: {}, DECLINED", saved.customerId(), saved.id());
             return paymentRepository.save(saved.withStatus(PaymentStatus.DECLINED)); // DECLINE: score >= 70
         }
 
         if (signal.riskScore() >= 40) {
+            log.debug("Customer: {} | payment id: {}, REVIEW", saved.customerId(), saved.id());
             return paymentRepository.save(saved.withStatus(PaymentStatus.PROCESSING)); // REVIEW: 40 <= score < 70
         }
 
+        log.debug("Customer: {} | payment id: {}, CLEAN", saved.customerId(), saved.id());
         return paymentRepository.save(saved.withStatus(PaymentStatus.COMPLETED));
     }
 

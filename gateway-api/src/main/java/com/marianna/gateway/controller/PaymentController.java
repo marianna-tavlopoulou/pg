@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.marianna.gateway.domain.PaymentOrder;
+import com.marianna.gateway.domain.PaymentStatus;
 import com.marianna.gateway.dto.PaymentRequest;
 import com.marianna.gateway.dto.PaymentResponse;
 import com.marianna.gateway.exception.PaymentNotFoundException;
@@ -44,8 +45,12 @@ public class PaymentController {
             @Valid @RequestBody PaymentRequest request) {
         PaymentOrder order = PaymentOrder.create(request.customerId(), merchantId, request.amount(),
                 request.currency(), request.method(), idempotencyKey, request.description());
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(PaymentResponse.from(paymentService.submit(order)));
+        PaymentOrder submittedOrder = paymentService.submit(order);
+        return submittedOrder.status().equals(PaymentStatus.DECLINED)
+                ? ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                        .body(PaymentResponse.from(submittedOrder))
+                : ResponseEntity.status(HttpStatus.CREATED)
+                        .body(PaymentResponse.from(submittedOrder));
     }
 
     @GetMapping("/{id}")

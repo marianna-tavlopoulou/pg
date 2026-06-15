@@ -6,7 +6,7 @@ public enum PaymentStatus {
     PENDING {
         @Override
         public Set<PaymentStatus> allowedTransitions() {
-            return Set.of(PROCESSING, DECLINED);
+            return Set.of(PROCESSING, COMPLETED, DECLINED);
         }
     },
     PROCESSING {

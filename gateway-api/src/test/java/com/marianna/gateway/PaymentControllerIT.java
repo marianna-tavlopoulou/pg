@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -71,12 +72,14 @@ public class PaymentControllerIT extends BaseIntegrationTest {
                 assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
 
                 PaymentResponse response2 = createPayment(request, idempotenceKey);
-                assertThat(response2.amount()).isEqualTo(response.amount());
+                assertThat(response2.amount()).isEqualByComparingTo(response.amount());
                 assertThat(response2.id()).isEqualTo(response.id());
                 assertThat(response2.status()).isEqualTo(response.status());
                 assertThat(response2.currency()).isEqualTo(response.currency());
-                assertThat(response2.createdAt()).isEqualTo(response.createdAt());
-                assertThat(response2.updatedAt()).isEqualTo(response.updatedAt());
+                assertThat(response2.createdAt().truncatedTo(ChronoUnit.MILLIS))
+                                .isEqualTo(response.createdAt().truncatedTo(ChronoUnit.MILLIS));
+                assertThat(response2.updatedAt().truncatedTo(ChronoUnit.MILLIS))
+                                .isEqualTo(response.updatedAt().truncatedTo(ChronoUnit.MILLIS));
                 assertThat(response2.method()).isEqualTo(response.method());
 
         }
@@ -87,7 +90,13 @@ public class PaymentControllerIT extends BaseIntegrationTest {
                 PaymentRequest request = new PaymentRequest(UUID.randomUUID(), new BigDecimal(1500), Currency.EUR,
                                 PaymentMethod.CARD, "Order #1");
 
-                assertBadRequest(request, null);
+                mockMvc.perform(
+                                post("/api/v1/payments")
+                                                .header("Authorization", "Bearer " + authToken())
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isBadRequest())
+                                .andReturn();
         }
 
         @Test

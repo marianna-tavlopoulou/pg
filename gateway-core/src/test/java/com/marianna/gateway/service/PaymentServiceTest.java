@@ -53,7 +53,7 @@ class PaymentServiceTest {
         PaymentOrder result = paymentService.submit(order);
 
         assertThat(result.status()).isEqualTo(PaymentStatus.COMPLETED);
-        verify(paymentRepository, times(3)).save(any());
+        verify(paymentRepository, times(2)).save(any());
     }
 
     @Test
@@ -67,7 +67,7 @@ class PaymentServiceTest {
         PaymentOrder result = paymentService.submit(order);
 
         assertThat(result.status()).isEqualTo(PaymentStatus.COMPLETED);
-        verify(paymentRepository, times(3)).save(any());
+        verify(paymentRepository, times(2)).save(any());
     }
 
     @Test

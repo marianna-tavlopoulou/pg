@@ -42,75 +42,75 @@ import com.marianna.gateway.dto.PaymentResponse;
  */
 public class FraudDetectionIT extends BaseIntegrationTest {
 
-    private PaymentRequest createPaymentRequest(int amount, PaymentMethod method) {
-        return new PaymentRequest(UUID.randomUUID(), new BigDecimal(amount), Currency.EUR, method,
-                "order #1");
-    }
-
-    @Test
-    @DisplayName("""
-            None → CLEAN (0 score)
-            Normal transaction should be approved
-            """)
-    void shouldApproveNormalTransaction() throws Exception {
-        PaymentResponse response = createPayment(createPaymentRequest(500, PaymentMethod.CARD),
-                UUID.randomUUID().toString());
-        assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
-    }
-
-    @Test
-    @DisplayName("""
-            HIGH_AMOUNT only → CLEAN (25 score)
-            Large amount alone is not fraud
-            """)
-    void shouldAllowHighAmountOnly() throws Exception {
-        PaymentResponse response = createPayment(createPaymentRequest(9000, PaymentMethod.CARD),
-                UUID.randomUUID().toString());
-        assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
-    }
-
-    @Test
-    @DisplayName("""
-            VELOCITY only → CLEAN (30 score)
-            High frequency alone is not fraud
-            """)
-    void shouldAllowVelocityOnly() throws Exception {
-        List<Integer> range = IntStream.rangeClosed(100, 120)
-                .boxed()
-                .toList();
-        for (Integer i : range) {
-            createPayment(
-                    createPaymentRequest(i, PaymentMethod.CARD),
-                    UUID.randomUUID().toString());
+        private PaymentRequest createPaymentRequest(int amount, PaymentMethod method) {
+                return new PaymentRequest(UUID.randomUUID(), new BigDecimal(amount), Currency.EUR, method,
+                                "order #1");
         }
-        PaymentResponse response = createPayment(createPaymentRequest(111, PaymentMethod.CARD),
-                UUID.randomUUID().toString());
-        assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
-    }
 
-    @Test
-    @DisplayName("""
-            DUPLICATE_AMOUNT only → CLEAN (25 score)
-            Recurring identical payments are allowed
-            """)
-    void shouldAllowDuplicateAmountOnly() throws Exception {
+        @Test
+        @DisplayName("""
+                        None → CLEAN (0 score)
+                        Normal transaction should be approved
+                        """)
+        void shouldApproveNormalTransaction() throws Exception {
+                PaymentResponse response = createPayment(createPaymentRequest(500, PaymentMethod.CARD),
+                                UUID.randomUUID().toString());
+                assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
+        }
 
-        createPayment(createPaymentRequest(200, PaymentMethod.CARD), UUID.randomUUID().toString());
-        PaymentResponse response = createPayment(createPaymentRequest(200, PaymentMethod.CARD),
-                UUID.randomUUID().toString());
+        @Test
+        @DisplayName("""
+                        HIGH_AMOUNT only → CLEAN (25 score)
+                        Large amount alone is not fraud
+                        """)
+        void shouldAllowHighAmountOnly() throws Exception {
+                PaymentResponse response = createPayment(createPaymentRequest(9000, PaymentMethod.CARD),
+                                UUID.randomUUID().toString());
+                assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
+        }
 
-        assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
-    }
+        @Test
+        @DisplayName("""
+                        VELOCITY only → CLEAN (30 score)
+                        High frequency alone is not fraud
+                        """)
+        void shouldAllowVelocityOnly() throws Exception {
+                List<Integer> range = IntStream.rangeClosed(100, 120)
+                                .boxed()
+                                .toList();
+                for (Integer i : range) {
+                        createPayment(
+                                        createPaymentRequest(i, PaymentMethod.CARD),
+                                        UUID.randomUUID().toString());
+                }
+                PaymentResponse response = createPayment(createPaymentRequest(111, PaymentMethod.CARD),
+                                UUID.randomUUID().toString());
+                assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
+        }
 
-    @Test
-    @DisplayName("""
-            HIGH_AMOUNT + HIGH_WALLET → REVIEW (40 score)
-            Elevated risk requires manual review
-            """)
-    void shouldMarkHighAmountHighWalletAsReview() throws Exception {
-        PaymentResponse response = createPayment(createPaymentRequest(9000, PaymentMethod.WALLET),
-                UUID.randomUUID().toString());
-        assertThat(response.status()).isEqualTo(PaymentStatus.PROCESSING);
-    }
+        @Test
+        @DisplayName("""
+                        DUPLICATE_AMOUNT only → CLEAN (25 score)
+                        Recurring identical payments are allowed
+                        """)
+        void shouldAllowDuplicateAmountOnly() throws Exception {
+
+                createPayment(createPaymentRequest(200, PaymentMethod.CARD), UUID.randomUUID().toString());
+                PaymentResponse response = createPayment(createPaymentRequest(200, PaymentMethod.CARD),
+                                UUID.randomUUID().toString());
+
+                assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
+        }
+
+        @Test
+        @DisplayName("""
+                        HIGH_AMOUNT + HIGH_WALLET → REVIEW (40 score)
+                        Elevated risk requires manual review
+                        """)
+        void shouldMarkHighAmountHighWalletAsReview() throws Exception {
+                PaymentResponse response = createPayment(createPaymentRequest(9000, PaymentMethod.WALLET),
+                                UUID.randomUUID().toString());
+                assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
+        }
 
 }

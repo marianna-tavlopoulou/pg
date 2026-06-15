@@ -37,9 +37,11 @@ public class PaymentService {
             return paymentRepository.save(saved.withStatus(PaymentStatus.DECLINED)); // DECLINE: score >= 70
         }
 
-        if (signal.riskScore() >= 40) {
-            return paymentRepository.save(saved.withStatus(PaymentStatus.PROCESSING)); // REVIEW: 40 <= score < 70
-        }
+        // TODO: when kafka messaging is implemented
+        // if (signal.riskScore() >= 40) {
+        // return paymentRepository.save(saved.withStatus(PaymentStatus.PROCESSING)); //
+        // REVIEW: 40 <= score < 70
+        // }
 
         return paymentRepository.save(saved.withStatus(PaymentStatus.COMPLETED));
     }

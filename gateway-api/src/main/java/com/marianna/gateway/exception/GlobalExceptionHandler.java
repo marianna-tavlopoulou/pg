@@ -3,6 +3,7 @@ package com.marianna.gateway.exception;
 import java.util.stream.Collectors;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -41,6 +42,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        var p = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        p.setTitle("Idempotency key already exists");
+        return p;
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    ProblemDetail handleOptimisticLockingFailure(OptimisticLockingFailureException ex) {
         var p = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
         p.setTitle("Idempotency key already exists");
         return p;

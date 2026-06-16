@@ -39,6 +39,7 @@ gradlew
 gradlew.cmd
 gradle/wrapper/
 **/target/
+repomix-output.*
 
 # ====== OS & System Files ======
 .DS_Store

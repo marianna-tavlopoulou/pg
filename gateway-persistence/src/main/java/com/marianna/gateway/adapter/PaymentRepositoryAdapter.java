@@ -33,6 +33,14 @@ public class PaymentRepositoryAdapter implements PaymentRepository {
     }
 
     @Override
+    public PaymentOrder saveAndFlush(PaymentOrder o) {
+        PaymentOrderEntity entityToSave = jpa.findById(o.id())
+                .map(existingEntity -> updateExistingEntity(existingEntity, o))
+                .orElseGet(() -> createNewEntity(o));
+        return toDomain(jpa.saveAndFlush(entityToSave));
+    }
+
+    @Override
     public Optional<PaymentOrder> findById(UUID id) {
         return jpa.findById(id).map(this::toDomain);
     }

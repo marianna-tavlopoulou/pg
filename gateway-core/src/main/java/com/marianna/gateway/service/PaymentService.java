@@ -27,18 +27,41 @@ public class PaymentService {
         this.fraudEvaluator = fraudEvaluator;
     }
 
-    @Transactional
     public PaymentOrder submit(PaymentOrder order) {
         // Idempotency: return existing result if key seen before
 
         PaymentOrder saved;
         try {
-            saved = paymentRepository.save(order);
+            saved = saveNewOrder(order);
         } catch (DataIntegrityViolationException e) {
-            return paymentRepository.findByIdempotencyKey(order.idempotencyKey())
-                    .orElseThrow(() -> new DataIntegrityViolationException(
-                            "Duplicate key detected but existing record could not be retrieved", e));
+            return findExistingOrder(order);
         }
+
+        return finalizePaymentStatus(saved);
+    }
+
+    public Optional<PaymentOrder> findPaymentByIdForMerchant(UUID id, UUID merchantId) {
+        Optional<PaymentOrder> orderOptional = paymentRepository.findById(id);
+        if (orderOptional.isPresent() && orderOptional.get().merchantId().equals(merchantId)) {
+            return orderOptional;
+        }
+        return Optional.empty();
+    }
+
+    @Transactional
+    private PaymentOrder findExistingOrder(PaymentOrder order) {
+        return paymentRepository.findByIdempotencyKey(order.idempotencyKey())
+                .orElseThrow(() -> new DataIntegrityViolationException(
+                        "Duplicate key detected but existing record could not be retrieved"));
+    }
+
+    @Transactional
+    private PaymentOrder saveNewOrder(PaymentOrder order) {
+        return paymentRepository.saveAndFlush(order);
+    }
+
+    @Transactional
+    private PaymentOrder finalizePaymentStatus(PaymentOrder saved) {
         FraudSignal signal = fraudEvaluator.evaluate(saved);
 
         if (signal.shouldDecline()) {
@@ -53,13 +76,5 @@ public class PaymentService {
 
         log.debug("Customer: {} | payment id: {}, CLEAN", saved.customerId(), saved.id());
         return paymentRepository.save(saved.withStatus(PaymentStatus.COMPLETED));
-    }
-
-    public Optional<PaymentOrder> findPaymentByIdForMerchant(UUID id, UUID merchantId) {
-        Optional<PaymentOrder> orderOptional = paymentRepository.findById(id);
-        if (orderOptional.isPresent() && orderOptional.get().merchantId().equals(merchantId)) {
-            return orderOptional;
-        }
-        return Optional.empty();
     }
 }

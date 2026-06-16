@@ -47,26 +47,30 @@ class PaymentServiceTest {
     @DisplayName("Clean payment via card should complete successfully")
     void shouldCompleteCleanPaymentByCard() {
         PaymentOrder order = buildOrder(new BigDecimal("100.00"), PaymentMethod.CARD);
+        when(paymentRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
         when(paymentRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(fraudEvaluator.evaluate(any())).thenReturn(FraudSignal.clean(order.id()));
 
         PaymentOrder result = paymentService.submit(order);
 
         assertThat(result.status()).isEqualTo(PaymentStatus.COMPLETED);
-        verify(paymentRepository, times(2)).save(any());
+        verify(paymentRepository, times(1)).save(any());
+        verify(paymentRepository, times(1)).saveAndFlush(any());
     }
 
     @Test
     @DisplayName("Clean payment via bank transfer should complete successfully")
     void shouldCompleteCleanPaymentByBankTransfer() {
         PaymentOrder order = buildOrder(new BigDecimal("100.00"), PaymentMethod.BANK_TRANSFER);
+        when(paymentRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
         when(paymentRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(fraudEvaluator.evaluate(any())).thenReturn(FraudSignal.clean(order.id()));
 
         PaymentOrder result = paymentService.submit(order);
 
         assertThat(result.status()).isEqualTo(PaymentStatus.COMPLETED);
-        verify(paymentRepository, times(2)).save(any());
+        verify(paymentRepository, times(1)).save(any());
+        verify(paymentRepository, times(1)).saveAndFlush(any());
     }
 
     @Test
@@ -74,6 +78,7 @@ class PaymentServiceTest {
     void shouldDeclineHighRiskPayment() {
         PaymentOrder order = buildOrder(new BigDecimal("15000.00"), PaymentMethod.CARD);
         FraudSignal risky = FraudSignal.risky(order.id(), 80, List.of("VERY_HIGH_AMOUNT"));
+        when(paymentRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
         when(paymentRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(fraudEvaluator.evaluate(any())).thenReturn(risky);
 
@@ -89,7 +94,8 @@ class PaymentServiceTest {
                 .withStatus(PaymentStatus.COMPLETED);
 
         when(paymentRepository.findByIdempotencyKey(any())).thenReturn(Optional.of(existingOrder));
-        when(paymentRepository.save(incomingOrder)).thenThrow(new DataIntegrityViolationException("already exists"));
+        when(paymentRepository.saveAndFlush(incomingOrder))
+                .thenThrow(new DataIntegrityViolationException("already exists"));
 
         assertThat(paymentService.submit(incomingOrder).status()).isEqualTo(PaymentStatus.COMPLETED);
         verify(fraudEvaluator, never()).evaluate(any());

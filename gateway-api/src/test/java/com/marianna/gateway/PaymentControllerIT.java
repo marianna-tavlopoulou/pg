@@ -1,6 +1,8 @@
 package com.marianna.gateway;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -8,7 +10,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -83,6 +92,53 @@ public class PaymentControllerIT extends BaseIntegrationTest {
                                 .isEqualTo(response.updatedAt().truncatedTo(ChronoUnit.MILLIS));
                 assertThat(response2.method()).isEqualTo(response.method());
 
+        }
+
+        @Test
+        @DisplayName("Send 20 payments simultaneously, reproducing idempotency race with  same Idempotency-Key, second response should be identical, still 201")
+        void shouldReturnIdenticalPaymentWhenIdempotencyRace() throws Exception {
+
+                int threadCount = 20;
+                // The Barrier: Keeps all 20 threads waiting until we say GO
+                CountDownLatch startBarrier = new CountDownLatch(1);
+                // The Reporter: Waits for all 20 threads to complete processing
+                CountDownLatch executionReporter = new CountDownLatch(threadCount);
+
+                ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
+                List<String> outcomes = Collections.synchronizedList(new ArrayList<>());
+
+                String idempotenceKey = UUID.randomUUID().toString();
+                PaymentRequest request = new PaymentRequest(UUID.randomUUID(), new BigDecimal(1500), Currency.EUR,
+                                PaymentMethod.CARD, "Order #1");
+
+                for (int i = 0; i < threadCount; i++) {
+                        executorService.submit(() -> {
+                                try {
+                                        startBarrier.await();
+                                        PaymentResponse response = createPayment(request, idempotenceKey);
+                                        outcomes.add(response.id().toString());
+                                } catch (Exception e) {
+                                        outcomes.add(e.getClass().getSimpleName());
+                                } finally {
+                                        executionReporter.countDown();
+                                }
+                        });
+                }
+
+                startBarrier.countDown();
+
+                boolean completedInTime = executionReporter.await(10, TimeUnit.SECONDS);
+                assertTrue(completedInTime, "The concurrent execution timed out! Possible deadlock encountered.");
+                executorService.shutdown();
+
+                long successCounter = outcomes.stream().distinct().count();
+
+                System.out.println("--- Concurrency Outcome Summary ---");
+                System.out.println("Successful Operations Allowed: " + successCounter);
+
+                // Your application layer should allow exactly 1 success, and safely
+                // catch/handle the other 19
+                assertEquals(1, successCounter, "Exactly one thread should have completed successfully.");
         }
 
         @Test
@@ -166,7 +222,7 @@ public class PaymentControllerIT extends BaseIntegrationTest {
                 MvcResult mvcResult = mockMvc.perform(
                                 get("/api/v1/payments/{id}", response.id())
                                                 .with(user(UUID.randomUUID().toString()))
-                                                .header("Authorization", "Bearer " + authToken())
+                                                // .header("Authorization", "Bearer " + authToken())
                                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isNotFound())
                                 .andReturn();

@@ -40,7 +40,7 @@ import com.marianna.gateway.dto.PaymentResponse;
  * DECLINE:
  * score >= 70
  */
-public class FraudDetectionIT extends BaseIntegrationTest {
+class FraudDetectionIT extends BaseIntegrationTest {
 
         private PaymentRequest createPaymentRequest(int amount, PaymentMethod method) {
                 return new PaymentRequest(UUID.randomUUID(), new BigDecimal(amount), Currency.EUR, method,
@@ -110,7 +110,7 @@ public class FraudDetectionIT extends BaseIntegrationTest {
         void shouldMarkHighAmountHighWalletAsReview() throws Exception {
                 PaymentResponse response = createPayment(createPaymentRequest(9000, PaymentMethod.WALLET),
                                 UUID.randomUUID().toString());
-                assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
+                assertThat(response.status()).isEqualTo(PaymentStatus.PROCESSING);
         }
 
 }

@@ -1,0 +1,29 @@
+spring:
+  datasource:
+    hikari:
+      # Keep this small and deliberate for tests. Each IT test class spins
+      # up its own Spring ApplicationContext, and every context gets its
+      # OWN Hikari pool -- but all of those pools point at the SAME shared
+      # static Testcontainers Postgres instance (see BaseContainerTest).
+      # With 4 IT classes x a generous pool size, you can easily exceed
+      # Postgres's max_connections (default ~100 on the postgres:16-alpine
+      # image) once more than one or two contexts are alive at the same
+      # time during `mvn clean verify`. When that happens, new connection
+      # attempts get refused/dropped mid-SSL-handshake rather than failing
+      # with a clean "too many connections" SQL error -- which is exactly
+      # the EOFException at PGStream.receiveChar during enableSSL seen in
+      # the full-suite run.
+      #
+      # 5 is enough for sequential MockMvc calls plus the small thread
+      # pools (2-10 threads) used in the concurrency tests, with headroom
+      # to spare even if 3-4 contexts are briefly alive simultaneously.
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 10000
+      # Surface a clear, fast failure if a connection really can't be
+      # acquired, rather than waiting out the full connection-timeout on
+      # every one of N concurrent threads in a test.
+      validation-timeout: 5000
+  threads:
+    virtual:
+      enabled: false

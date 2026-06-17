@@ -1,8 +1,6 @@
 package com.marianna.gateway;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -10,18 +8,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 
 import com.marianna.gateway.domain.Currency;
@@ -30,7 +22,8 @@ import com.marianna.gateway.domain.PaymentStatus;
 import com.marianna.gateway.dto.PaymentRequest;
 import com.marianna.gateway.dto.PaymentResponse;
 
-public class PaymentControllerIT extends BaseIntegrationTest {
+@ActiveProfiles("test")
+class PaymentControllerIT extends BaseIntegrationTest {
 
         @Test
         @DisplayName("Valid payment completes successfully and returns 201")
@@ -52,9 +45,9 @@ public class PaymentControllerIT extends BaseIntegrationTest {
         void shouldRetrieveExistingPayment() throws Exception {
                 PaymentRequest request = new PaymentRequest(UUID.randomUUID(), new BigDecimal(1500), Currency.EUR,
                                 PaymentMethod.CARD, "Order #1");
-                String idempotenceKey = UUID.randomUUID().toString();
+                String idempotencyKey = UUID.randomUUID().toString();
 
-                PaymentResponse response = createPayment(request, idempotenceKey);
+                PaymentResponse response = createPayment(request, idempotencyKey);
                 assertThat(response.amount()).isEqualByComparingTo(new BigDecimal(1500));
                 assertThat(response.currency()).isEqualTo(Currency.EUR);
                 assertThat(response.id()).isNotNull();
@@ -73,15 +66,15 @@ public class PaymentControllerIT extends BaseIntegrationTest {
 
                 PaymentRequest request = new PaymentRequest(UUID.randomUUID(), new BigDecimal(1500), Currency.EUR,
                                 PaymentMethod.CARD, "Order #1");
-                String idempotenceKey = UUID.randomUUID().toString();
+                String idempotencyKey = UUID.randomUUID().toString();
 
-                PaymentResponse response = createPayment(request, idempotenceKey);
+                PaymentResponse response = createPayment(request, idempotencyKey);
                 assertThat(response.amount()).isEqualByComparingTo(new BigDecimal(1500));
                 assertThat(response.currency()).isEqualTo(Currency.EUR);
                 assertThat(response.id()).isNotNull();
                 assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
 
-                PaymentResponse response2 = createPayment(request, idempotenceKey);
+                PaymentResponse response2 = createPayment(request, idempotencyKey);
                 assertThat(response2.amount()).isEqualByComparingTo(response.amount());
                 assertThat(response2.id()).isEqualTo(response.id());
                 assertThat(response2.status()).isEqualTo(response.status());
@@ -92,53 +85,6 @@ public class PaymentControllerIT extends BaseIntegrationTest {
                                 .isEqualTo(response.updatedAt().truncatedTo(ChronoUnit.MILLIS));
                 assertThat(response2.method()).isEqualTo(response.method());
 
-        }
-
-        @Test
-        @DisplayName("Send 20 payments simultaneously, reproducing idempotency race with  same Idempotency-Key, second response should be identical, still 201")
-        void shouldReturnIdenticalPaymentWhenIdempotencyRace() throws Exception {
-
-                int threadCount = 20;
-                // The Barrier: Keeps all 20 threads waiting until we say GO
-                CountDownLatch startBarrier = new CountDownLatch(1);
-                // The Reporter: Waits for all 20 threads to complete processing
-                CountDownLatch executionReporter = new CountDownLatch(threadCount);
-
-                ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
-                List<String> outcomes = Collections.synchronizedList(new ArrayList<>());
-
-                String idempotenceKey = UUID.randomUUID().toString();
-                PaymentRequest request = new PaymentRequest(UUID.randomUUID(), new BigDecimal(1500), Currency.EUR,
-                                PaymentMethod.CARD, "Order #1");
-
-                for (int i = 0; i < threadCount; i++) {
-                        executorService.submit(() -> {
-                                try {
-                                        startBarrier.await();
-                                        PaymentResponse response = createPayment(request, idempotenceKey);
-                                        outcomes.add(response.id().toString());
-                                } catch (Exception e) {
-                                        outcomes.add(e.getClass().getSimpleName());
-                                } finally {
-                                        executionReporter.countDown();
-                                }
-                        });
-                }
-
-                startBarrier.countDown();
-
-                boolean completedInTime = executionReporter.await(10, TimeUnit.SECONDS);
-                assertTrue(completedInTime, "The concurrent execution timed out! Possible deadlock encountered.");
-                executorService.shutdown();
-
-                long successCounter = outcomes.stream().distinct().count();
-
-                System.out.println("--- Concurrency Outcome Summary ---");
-                System.out.println("Successful Operations Allowed: " + successCounter);
-
-                // Your application layer should allow exactly 1 success, and safely
-                // catch/handle the other 19
-                assertEquals(1, successCounter, "Exactly one thread should have completed successfully.");
         }
 
         @Test

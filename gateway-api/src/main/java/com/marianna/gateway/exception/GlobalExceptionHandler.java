@@ -50,7 +50,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(OptimisticLockingFailureException.class)
     ProblemDetail handleOptimisticLockingFailure(OptimisticLockingFailureException ex) {
         var p = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
-        p.setTitle("Idempotency key already exists");
+        p.setTitle("Concurrent modification");
         return p;
     }
 

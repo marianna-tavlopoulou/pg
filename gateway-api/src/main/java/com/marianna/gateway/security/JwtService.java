@@ -2,6 +2,7 @@ package com.marianna.gateway.security;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.Optional;
 import java.util.UUID;
 
 import javax.crypto.SecretKey;
@@ -22,41 +23,40 @@ public class JwtService {
 
     private final SecretKey secretKey;
     private final long expiration;
-    
 
-    public JwtService (@Value("${jwt.secret}") String secret, @Value("${jwt.expiration-ms}") long expiration) {
+    public JwtService(@Value("${jwt.secret}") String secret, @Value("${jwt.expiration-ms}") long expiration) {
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expiration = expiration;
     }
 
-    //Generate token
+    // Generate token
     public String generateToken(UUID userId, String username) {
-        Date now =  new Date();
+        Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
 
         return Jwts.builder()
-        .subject(username)
-        .claim("userId", userId.toString())
-        .issuedAt(now)
-        .expiration(expiryDate)
-        .signWith(secretKey)
-        .compact();
+                .subject(username)
+                .claim("userId", userId.toString())
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .signWith(secretKey)
+                .compact();
     }
 
-    public boolean validateToken(String token) {
+    public Optional<Claims> validateToken(String token) {
         try {
-            Jwts.parser()
-            .verifyWith(secretKey)
-            .build()
-            .parseSignedClaims(token);
+            Claims claims = Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token).getPayload();
 
-            return true;
+            return Optional.of(claims);
         } catch (ExpiredJwtException e) {
             log.warn("Token expired" + e.getMessage());
-            return false;
+            return Optional.empty();
         } catch (JwtException e) {
             log.warn("Invalid token" + e.getMessage());
-            return false;
+            return Optional.empty();
         }
     }
 
@@ -66,8 +66,8 @@ public class JwtService {
 
     }
 
-    public UUID extractUserId(String token) {
-        String userId = extractClaims(token).get("userId", String.class);
+    public UUID extractUserId(Claims claims) {
+        String userId = claims.get("userId", String.class);
         return UUID.fromString(userId);
     }
 

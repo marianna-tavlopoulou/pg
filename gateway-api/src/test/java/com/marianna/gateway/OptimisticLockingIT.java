@@ -15,7 +15,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.OptimisticLockingFailureException;
-import org.springframework.test.context.ActiveProfiles;
 
 import com.marianna.gateway.domain.Currency;
 import com.marianna.gateway.domain.PaymentMethod;
@@ -23,7 +22,6 @@ import com.marianna.gateway.domain.PaymentOrder;
 import com.marianna.gateway.domain.PaymentStatus;
 import com.marianna.gateway.port.PaymentRepository;
 
-@ActiveProfiles("test")
 class OptimisticLockingIT extends BaseIntegrationTest {
 
     @Autowired

@@ -13,7 +13,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 
 import com.marianna.gateway.domain.Currency;
@@ -22,7 +21,6 @@ import com.marianna.gateway.domain.PaymentStatus;
 import com.marianna.gateway.dto.PaymentRequest;
 import com.marianna.gateway.dto.PaymentResponse;
 
-@ActiveProfiles("test")
 class PaymentControllerIT extends BaseIntegrationTest {
 
         @Test

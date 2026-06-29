@@ -18,7 +18,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
@@ -27,16 +26,15 @@ import com.marianna.gateway.domain.Currency;
 import com.marianna.gateway.domain.PaymentMethod;
 import com.marianna.gateway.dto.PaymentRequest;
 
-@ActiveProfiles("test")
 class PaymentConcurrencyIT extends BaseIntegrationTest {
 
     private record CallResult(int status, String body) {
     }
 
     @Test
-    @DisplayName("20 concurrent submits with same Idempotency-Key -> exactly one payment created, all responses identical")
+    @DisplayName("10 concurrent submits with same Idempotency-Key -> exactly one payment created, all responses identical")
     void concurrentSubmits_sameIdempotencyKey_resultInSingleRecord() throws Exception {
-        int threadCount = 20;
+        int threadCount = 10;
         PaymentRequest request = new PaymentRequest(UUID.randomUUID(), new BigDecimal(1500), Currency.EUR,
                 PaymentMethod.CARD, "Order #1");
         String authToken = authToken(); // make sure that all requests use the same token

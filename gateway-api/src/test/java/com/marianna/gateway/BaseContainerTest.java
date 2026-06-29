@@ -2,6 +2,7 @@ package com.marianna.gateway;
 
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
@@ -12,6 +13,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @Testcontainers
+@ActiveProfiles("test")
 abstract class BaseContainerTest {
 
     // static = one container shared across ALL test classes that extend this
@@ -52,8 +54,8 @@ abstract class BaseContainerTest {
         registry.add("spring.flyway.enabled", () -> "true");
 
         // Point Redis to localhost — use a mock or embedded Redis later
-        registry.add("spring.data.redis.host", () -> "localhost");
-        registry.add("spring.data.redis.port", () -> "6379");
+        registry.add("spring.data.redis.host", redis::getHost);
+        registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
 
     }
 

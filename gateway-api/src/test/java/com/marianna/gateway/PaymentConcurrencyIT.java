@@ -32,7 +32,7 @@ class PaymentConcurrencyIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("10 concurrent submits with same Idempotency-Key -> exactly one payment created, all responses identical")
+    @DisplayName("10 concurrent submits with same Idempotency-Key with clean score-> exactly one payment created, all responses identical")
     void concurrentSubmits_sameIdempotencyKey_resultInSingleRecord() throws Exception {
         int threadCount = 10;
         PaymentRequest request = new PaymentRequest(UUID.randomUUID(), new BigDecimal(1500), Currency.EUR,

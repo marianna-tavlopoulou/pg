@@ -42,8 +42,8 @@ import com.marianna.gateway.dto.PaymentResponse;
  */
 class FraudDetectionIT extends BaseIntegrationTest {
 
-        private PaymentRequest createPaymentRequest(int amount, PaymentMethod method) {
-                return new PaymentRequest(UUID.randomUUID(), new BigDecimal(amount), Currency.EUR, method,
+        private PaymentRequest createPaymentRequest(int amount, PaymentMethod method, UUID customerId) {
+                return new PaymentRequest(customerId, new BigDecimal(amount), Currency.EUR, method,
                                 "order #1");
         }
 
@@ -53,7 +53,8 @@ class FraudDetectionIT extends BaseIntegrationTest {
                         Normal transaction should be approved
                         """)
         void shouldApproveNormalTransaction() throws Exception {
-                PaymentResponse response = createPayment(createPaymentRequest(500, PaymentMethod.CARD),
+                PaymentResponse response = createPayment(
+                                createPaymentRequest(500, PaymentMethod.CARD, UUID.randomUUID()),
                                 UUID.randomUUID().toString());
                 assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
         }
@@ -64,7 +65,8 @@ class FraudDetectionIT extends BaseIntegrationTest {
                         Large amount alone is not fraud
                         """)
         void shouldAllowHighAmountOnly() throws Exception {
-                PaymentResponse response = createPayment(createPaymentRequest(9000, PaymentMethod.CARD),
+                PaymentResponse response = createPayment(
+                                createPaymentRequest(9000, PaymentMethod.CARD, UUID.randomUUID()),
                                 UUID.randomUUID().toString());
                 assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
         }
@@ -80,10 +82,11 @@ class FraudDetectionIT extends BaseIntegrationTest {
                                 .toList();
                 for (Integer i : range) {
                         createPayment(
-                                        createPaymentRequest(i, PaymentMethod.CARD),
+                                        createPaymentRequest(i, PaymentMethod.CARD, UUID.randomUUID()),
                                         UUID.randomUUID().toString());
                 }
-                PaymentResponse response = createPayment(createPaymentRequest(111, PaymentMethod.CARD),
+                PaymentResponse response = createPayment(
+                                createPaymentRequest(111, PaymentMethod.CARD, UUID.randomUUID()),
                                 UUID.randomUUID().toString());
                 assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
         }
@@ -95,8 +98,9 @@ class FraudDetectionIT extends BaseIntegrationTest {
                         """)
         void shouldAllowDuplicateAmountOnly() throws Exception {
 
-                createPayment(createPaymentRequest(200, PaymentMethod.CARD), UUID.randomUUID().toString());
-                PaymentResponse response = createPayment(createPaymentRequest(200, PaymentMethod.CARD),
+                UUID customerId = UUID.randomUUID();
+                createPayment(createPaymentRequest(200, PaymentMethod.CARD, customerId), UUID.randomUUID().toString());
+                PaymentResponse response = createPayment(createPaymentRequest(200, PaymentMethod.CARD, customerId),
                                 UUID.randomUUID().toString());
 
                 assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
@@ -108,7 +112,8 @@ class FraudDetectionIT extends BaseIntegrationTest {
                         Elevated risk requires manual review
                         """)
         void shouldMarkHighAmountHighWalletAsReview() throws Exception {
-                PaymentResponse response = createPayment(createPaymentRequest(9000, PaymentMethod.WALLET),
+                PaymentResponse response = createPayment(
+                                createPaymentRequest(9000, PaymentMethod.WALLET, UUID.randomUUID()),
                                 UUID.randomUUID().toString());
                 assertThat(response.status()).isEqualTo(PaymentStatus.PROCESSING);
         }

@@ -43,6 +43,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String token = authHeader.substring(7);
         Optional<Claims> claims = jwtService.validateToken(token);
         if (claims.isEmpty()) {
+            response.setHeader("WWW-Authenticate", "Bearer");
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
             return;
         }

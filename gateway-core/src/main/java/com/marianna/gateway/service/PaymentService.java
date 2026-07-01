@@ -58,9 +58,8 @@ public class PaymentService {
     }
 
     /**
-     * Removed @Transactional annotation because the method is called from a
-     * non-transactional context and we want to avoid starting a new transaction
-     * here. The atomicity of the status update is handled by the outbox pattern, as
+     * Removed @Transactional annotation because the atomicity of the status update
+     * is handled by the outbox pattern, as
      * Redis and Postgres cannot share a transaction.
      */
     private PaymentOrder finalizePaymentStatus(PaymentOrder saved) {

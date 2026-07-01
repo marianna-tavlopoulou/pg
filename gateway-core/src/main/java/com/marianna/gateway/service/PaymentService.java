@@ -10,6 +10,7 @@ import com.marianna.gateway.domain.FraudSignal;
 import com.marianna.gateway.domain.PaymentOrder;
 import com.marianna.gateway.domain.PaymentStatus;
 import com.marianna.gateway.port.FraudEvaluator;
+import com.marianna.gateway.port.OutboxRepository;
 import com.marianna.gateway.port.PaymentRepository;
 
 import lombok.extern.slf4j.Slf4j;
@@ -19,10 +20,13 @@ import lombok.extern.slf4j.Slf4j;
 public class PaymentService {
 
     private final PaymentRepository paymentRepository;
+    private final OutboxRepository outboxRepository;
     private final FraudEvaluator fraudEvaluator;
 
-    public PaymentService(PaymentRepository paymentRepository, FraudEvaluator fraudEvaluator) {
+    public PaymentService(PaymentRepository paymentRepository, FraudEvaluator fraudEvaluator,
+            OutboxRepository outboxRepository) {
         this.paymentRepository = paymentRepository;
+        this.outboxRepository = outboxRepository;
         this.fraudEvaluator = fraudEvaluator;
     }
 
@@ -54,7 +58,9 @@ public class PaymentService {
     }
 
     private PaymentOrder saveNewOrder(PaymentOrder order) {
-        return paymentRepository.saveAndFlush(order);
+        PaymentOrder newPaymentOrder = paymentRepository.saveAndFlush(order);
+        // outboxRepository.save();
+        return newPaymentOrder;
     }
 
     /**

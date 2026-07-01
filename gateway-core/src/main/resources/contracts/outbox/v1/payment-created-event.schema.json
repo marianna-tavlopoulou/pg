@@ -1,0 +1,71 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "payment-created-event.schema.json",
+    "title": "PaymentCreatedEvent",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "eventId",
+        "paymentId",
+        "merchantId",
+        "amount",
+        "currency",
+        "method",
+        "status",
+        "occurredAt",
+        "eventType",
+        "schemaVersion"
+    ],
+    "properties": {
+        "eventId": {
+            "type": "string",
+            "format": "uuid"
+        },
+        "paymentId": {
+            "type": "string",
+            "format": "uuid"
+        },
+        "merchantId": {
+            "type": "string",
+            "format": "uuid"
+        },
+        "amount": {
+            "type": "number",
+            "minimum": 0
+        },
+        "currency": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+        },
+        "method": {
+            "type": "string",
+            "enum": [
+                "CARD",
+                "SEPA",
+                "BANK_TRANSFER",
+                "WALLET"
+            ]
+        },
+        "status": {
+            "type": "string",
+            "enum": [
+                "COMPLETED",
+                "FAILED",
+                "PENDING"
+            ]
+        },
+        "eventType": {
+            "type": "string",
+            "const": "PAYMENT_CREATED"
+        },
+        "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "schemaVersion": {
+            "type": "integer",
+            "minimum": 1
+        }
+    }
+}

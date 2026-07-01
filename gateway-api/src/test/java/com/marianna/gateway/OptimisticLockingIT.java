@@ -1,5 +1,7 @@
 package com.marianna.gateway;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -33,7 +35,7 @@ class OptimisticLockingIT extends BaseIntegrationTest {
 
         PaymentOrder created = PaymentOrder
                 .create(UUID.randomUUID(), UUID.randomUUID(), new BigDecimal(50), Currency.EUR, PaymentMethod.CARD,
-                        UUID.randomUUID().toString(), "lock test");
+                        UUID.randomUUID().toString(), "lock test", null);
         PaymentOrder saved = paymentRepository.save(created);
 
         int threadCount = 2;
@@ -64,21 +66,9 @@ class OptimisticLockingIT extends BaseIntegrationTest {
         }
 
         pool.shutdown();
-        /**
-         * TODO:
-         * the adapter should be fixed to pass the caller's own loaded entity/version
-         * through.
-         * one OptimisticLockingFailureException should be thrown instead of save()
-         * always merging onto the
-         * latest row rather than the row the caller actually read, which
-         * silently defeats optimistic locking: it becomes last-write-wins instead of a
-         * protected check-and-set
-         */
 
-        // assertThat(successCount).as("First attempt should resolve to
-        // success").isEqualTo(1);
-        // assertThat(successCount).as("Second attempt should resolve to a version
-        // conflict").isEqualTo(1);
+        assertThat(successCount.get()).as("First attempt should resolve to success").isEqualTo(1);
+        assertThat(conflictCount.get()).as("Second attempt should resolve to a version conflict").isEqualTo(1);
 
     }
 

@@ -44,7 +44,7 @@ public class PaymentController {
                         @AuthenticationPrincipal UUID merchantId,
                         @Valid @RequestBody PaymentRequest request) {
                 PaymentOrder order = PaymentOrder.create(request.customerId(), merchantId, request.amount(),
-                                request.currency(), request.method(), idempotencyKey, request.description());
+                                request.currency(), request.method(), idempotencyKey, request.description(), null);
                 PaymentOrder submittedOrder = paymentService.submit(order);
                 return submittedOrder.status().equals(PaymentStatus.DECLINED)
                                 ? ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)

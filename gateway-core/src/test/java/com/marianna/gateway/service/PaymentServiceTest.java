@@ -46,7 +46,7 @@ class PaymentServiceTest {
     @Test
     @DisplayName("Clean payment via card should complete successfully")
     void shouldCompleteCleanPaymentByCard() {
-        PaymentOrder order = buildOrder(new BigDecimal("100.00"), PaymentMethod.CARD);
+        PaymentOrder order = buildOrder(new BigDecimal("100.00"), PaymentMethod.CARD, null);
         when(paymentRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
         when(paymentRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(fraudEvaluator.evaluate(any())).thenReturn(FraudSignal.clean(order.id()));
@@ -61,7 +61,7 @@ class PaymentServiceTest {
     @Test
     @DisplayName("Clean payment via bank transfer should complete successfully")
     void shouldCompleteCleanPaymentByBankTransfer() {
-        PaymentOrder order = buildOrder(new BigDecimal("100.00"), PaymentMethod.BANK_TRANSFER);
+        PaymentOrder order = buildOrder(new BigDecimal("100.00"), PaymentMethod.BANK_TRANSFER, null);
         when(paymentRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
         when(paymentRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(fraudEvaluator.evaluate(any())).thenReturn(FraudSignal.clean(order.id()));
@@ -76,7 +76,7 @@ class PaymentServiceTest {
     @Test
     @DisplayName("High-risk payment should be declined")
     void shouldDeclineHighRiskPayment() {
-        PaymentOrder order = buildOrder(new BigDecimal("15000.00"), PaymentMethod.CARD);
+        PaymentOrder order = buildOrder(new BigDecimal("15000.00"), PaymentMethod.CARD, null);
         FraudSignal risky = FraudSignal.risky(order.id(), 80, List.of("VERY_HIGH_AMOUNT"));
         when(paymentRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
         when(paymentRepository.save(any())).thenAnswer(i -> i.getArgument(0));
@@ -89,8 +89,8 @@ class PaymentServiceTest {
     @DisplayName("Duplicate idempotency key returns existing payment without reprocessing")
     void shouldReturnExistingOnDuplicateKey() {
 
-        PaymentOrder incomingOrder = buildOrder(new BigDecimal("50.00"), PaymentMethod.CARD);
-        PaymentOrder existingOrder = buildOrder(new BigDecimal("50.00"), PaymentMethod.CARD)
+        PaymentOrder incomingOrder = buildOrder(new BigDecimal("50.00"), PaymentMethod.CARD, null);
+        PaymentOrder existingOrder = buildOrder(new BigDecimal("50.00"), PaymentMethod.CARD, 0L)
                 .withStatus(PaymentStatus.COMPLETED);
 
         when(paymentRepository.findByIdempotencyKey(any())).thenReturn(Optional.of(existingOrder));
@@ -101,8 +101,8 @@ class PaymentServiceTest {
         verify(fraudEvaluator, never()).evaluate(any());
     }
 
-    private PaymentOrder buildOrder(BigDecimal amount, PaymentMethod paymentMethod) {
+    private PaymentOrder buildOrder(BigDecimal amount, PaymentMethod paymentMethod, Long version) {
         return PaymentOrder.create(UUID.randomUUID(), UUID.randomUUID(), amount, Currency.EUR,
-                paymentMethod, UUID.randomUUID().toString(), "Test");
+                paymentMethod, UUID.randomUUID().toString(), "Test", version);
     }
 }

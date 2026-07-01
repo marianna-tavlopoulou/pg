@@ -26,18 +26,12 @@ public class PaymentRepositoryAdapter implements PaymentRepository {
 
     @Override
     public PaymentOrder save(PaymentOrder o) {
-        PaymentOrderEntity entityToSave = jpa.findById(o.id())
-                .map(existingEntity -> updateExistingEntity(existingEntity, o))
-                .orElseGet(() -> createNewEntity(o));
-        return toDomain(jpa.save(entityToSave));
+        return toDomain(jpa.save(toEntity(o)));
     }
 
     @Override
     public PaymentOrder saveAndFlush(PaymentOrder o) {
-        PaymentOrderEntity entityToSave = jpa.findById(o.id())
-                .map(existingEntity -> updateExistingEntity(existingEntity, o))
-                .orElseGet(() -> createNewEntity(o));
-        return toDomain(jpa.saveAndFlush(entityToSave));
+        return toDomain(jpa.saveAndFlush(toEntity(o)));
     }
 
     @Override
@@ -55,19 +49,7 @@ public class PaymentRepositoryAdapter implements PaymentRepository {
         return jpa.findByMerchantIdAndStatus(merchantId, status).stream().map(this::toDomain).toList();
     }
 
-    /**
-     * Only status and description are mutable after creation.
-     * Amount, currency, method are immutable — intentional.
-     */
-    private PaymentOrderEntity updateExistingEntity(PaymentOrderEntity e, PaymentOrder o) {
-        log.debug("Updating entity with id: {}", o.id());
-        e.setStatus(o.status());
-        e.setDescription(o.description());
-        return e;
-    }
-
-    private PaymentOrderEntity createNewEntity(PaymentOrder o) {
-        log.debug("Saving entity with id: {}", o.id());
+    private PaymentOrderEntity toEntity(PaymentOrder o) {
         var e = new PaymentOrderEntity();
         e.setId(o.id());
         e.setCustomerId(o.customerId());
@@ -80,12 +62,26 @@ public class PaymentRepositoryAdapter implements PaymentRepository {
         e.setDescription(o.description());
         e.setCreatedAt(o.createdAt());
         e.setUpdatedAt(o.updatedAt());
+        e.setVersion(o.version());
+
+        log.debug("Persisting PaymentOrder id={} version={} status={}", o.id(), o.version(), o.status());
+
         return e;
     }
 
     private PaymentOrder toDomain(PaymentOrderEntity e) {
-        return new PaymentOrder(e.getId(), e.getCustomerId(), e.getMerchantId(), e.getAmount(), e.getCurrency(),
-                e.getMethod(), e.getStatus(), e.getIdempotencyKey(), e.getDescription(),
-                e.getCreatedAt(), e.getUpdatedAt());
+        return new PaymentOrder(
+                e.getId(),
+                e.getCustomerId(),
+                e.getMerchantId(),
+                e.getAmount(),
+                e.getCurrency(),
+                e.getMethod(),
+                e.getStatus(),
+                e.getIdempotencyKey(),
+                e.getDescription(),
+                e.getCreatedAt(),
+                e.getUpdatedAt(),
+                e.getVersion()); // round-trip version back to domain
     }
 }

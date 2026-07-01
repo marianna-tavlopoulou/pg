@@ -12,5 +12,7 @@ import com.marianna.gateway.entity.PaymentOrderEntity;
 public interface PaymentOrderJpaRepository extends JpaRepository<PaymentOrderEntity, UUID> {
     Optional<PaymentOrderEntity> findByIdempotencyKey(String idempotencyKey);
 
+    Optional<PaymentOrderEntity> findByIdempotencyKeyAndVersion(String idempotencyKey, Long version);
+
     List<PaymentOrderEntity> findByMerchantIdAndStatus(UUID merchantId, PaymentStatus status);
 }

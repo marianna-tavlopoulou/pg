@@ -5,7 +5,6 @@ import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.marianna.gateway.domain.FraudSignal;
 import com.marianna.gateway.domain.PaymentOrder;
@@ -48,19 +47,22 @@ public class PaymentService {
         return Optional.empty();
     }
 
-    @Transactional
     private PaymentOrder findExistingOrder(PaymentOrder order) {
         return paymentRepository.findByIdempotencyKey(order.idempotencyKey())
                 .orElseThrow(() -> new DataIntegrityViolationException(
                         "Duplicate key detected but existing record could not be retrieved"));
     }
 
-    @Transactional
     private PaymentOrder saveNewOrder(PaymentOrder order) {
         return paymentRepository.saveAndFlush(order);
     }
 
-    @Transactional
+    /**
+     * Removed @Transactional annotation because the method is called from a
+     * non-transactional context and we want to avoid starting a new transaction
+     * here. The atomicity of the status update is handled by the outbox pattern, as
+     * Redis and Postgres cannot share a transaction.
+     */
     private PaymentOrder finalizePaymentStatus(PaymentOrder saved) {
         FraudSignal signal = fraudEvaluator.evaluate(saved);
 

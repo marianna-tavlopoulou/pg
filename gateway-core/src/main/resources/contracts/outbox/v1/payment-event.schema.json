@@ -1,0 +1,44 @@
+{
+    "$schema": "http://json-schema.org",
+    "title": "PaymentEvent",
+    "type": "object",
+    "properties": {
+        "eventId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique identifier for this specific event instance."
+        },
+        "aggregateId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The ID of the parent aggregate (e.g., the PaymentOrder ID)."
+        },
+        "eventType": {
+            "type": "string",
+            "enum": [
+                "PAYMENT_CREATED",
+                "PAYMENT_STARTED",
+                "PAYMENT_SUCCESS",
+                "PAYMENT_FAILED"
+            ],
+            "description": "The specific type of payment event occurring."
+        },
+        "payload": {
+            "type": "string",
+            "description": "The serialized JSON string payload containing the specific event details."
+        },
+        "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The ISO-8601 timestamp indicating exactly when the event took place."
+        }
+    },
+    "required": [
+        "eventId",
+        "aggregateId",
+        "eventType",
+        "payload",
+        "occurredAt"
+    ],
+    "additionalProperties": false
+}

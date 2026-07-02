@@ -35,7 +35,7 @@ class OptimisticLockingIT extends BaseIntegrationTest {
 
         PaymentOrder created = PaymentOrder
                 .create(UUID.randomUUID(), UUID.randomUUID(), new BigDecimal(50), Currency.EUR, PaymentMethod.CARD,
-                        UUID.randomUUID().toString(), "lock test", null);
+                        UUID.randomUUID().toString(), "lock test");
         PaymentOrder saved = paymentRepository.save(created);
 
         int threadCount = 2;

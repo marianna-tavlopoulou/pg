@@ -1,6 +1,7 @@
 package com.marianna.gateway.adapter;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -36,6 +37,12 @@ public class OutboxRepositoryAdapter implements OutboxRepository {
         return jpa.findUnpublishedEvents(Pageable.ofSize(limit)).stream()
                 .map(this::toDomain)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public Optional<PaymentEvent> findByAggregateId(UUID aggregateId) {
+        return jpa.findByAggregateId(aggregateId)
+                .map(this::toDomain);
     }
 
     @Override

@@ -1,6 +1,7 @@
 package com.marianna.gateway.repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.domain.Pageable;
@@ -18,5 +19,7 @@ public interface OutboxEventJpaRepository extends JpaRepository<OutboxEventEntit
     @Modifying
     @Query("UPDATE OutboxEventEntity e SET e.published = true WHERE e.id = :eventId")
     void markAsPublished(UUID eventId);
+
+    Optional<OutboxEventEntity> findByAggregateId(UUID aggregateId);
 
 }

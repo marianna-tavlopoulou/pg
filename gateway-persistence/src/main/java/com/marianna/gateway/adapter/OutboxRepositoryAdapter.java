@@ -1,7 +1,8 @@
 package com.marianna.gateway.adapter;
 
-import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
@@ -34,16 +35,13 @@ public class OutboxRepositoryAdapter implements OutboxRepository {
     public List<PaymentEvent> findUnpublishedEvents(int limit) {
         return jpa.findUnpublishedEvents(Pageable.ofSize(limit)).stream()
                 .map(this::toDomain)
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
     }
 
     @Override
-    public void markAsPublished(java.util.UUID eventId) {
-        jpa.findById(eventId).ifPresent(e -> {
-            e.setPublished(true);
-            jpa.save(e);
-            log.debug("Marked outbox event as published: {} for payment id: {}", e.getEventType(), e.getAggregateId());
-        });
+    public void markAsPublished(UUID eventId) {
+        jpa.markAsPublished(eventId);
+        log.debug("Marked outbox event as published: {}", eventId);
     }
 
     private OutboxEventEntity toEntity(PaymentEvent event) {
@@ -53,7 +51,6 @@ public class OutboxRepositoryAdapter implements OutboxRepository {
         e.setAggregateId(event.aggregateId());
         e.setPublished(false);
         e.setPayload(event.payload());
-        e.setCreatedAt(Instant.now());
         return e;
     }
 

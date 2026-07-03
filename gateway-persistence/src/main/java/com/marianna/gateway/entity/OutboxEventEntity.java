@@ -9,7 +9,6 @@ import org.hibernate.type.SqlTypes;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.Getter;
@@ -17,8 +16,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "outbox_events", indexes = {
-        @Index(name = "idx_outbox_unpublished", columnList = "published, created_at") })
+@Table(name = "outbox_events")
 @Getter
 @Setter
 @NoArgsConstructor

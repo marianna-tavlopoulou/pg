@@ -1,9 +1,11 @@
 package com.marianna.gateway.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -136,6 +138,20 @@ class PaymentFinalizationServiceTest {
         ArgumentCaptor<PaymentOrder> orderCaptor = ArgumentCaptor.forClass(PaymentOrder.class);
         verify(paymentRepository, times(1)).save(orderCaptor.capture());
         assertThat(orderCaptor.getValue().status()).isEqualTo(PaymentStatus.PROCESSING);
+    }
+
+    @Test
+    @DisplayName("When paymentRepository.save() throws → outboxRepository.save() never called (proves transaction rollback intent even in unit context)")
+    void shouldRollbackTransactionWhenPaymentRepositorySaveThrows() throws Exception {
+
+        PaymentOrder order = buildOrder(new BigDecimal("100.00"), PaymentMethod.CARD);
+        FraudSignal fraudSignal = FraudSignal.clean(order.id());
+
+        when(paymentRepository.save(any(PaymentOrder.class))).thenThrow(new RuntimeException("Database error"));
+
+        assertThrows(RuntimeException.class,
+                () -> paymentFinalizationService.finalizePaymentStatus(order, fraudSignal));
+        verifyNoInteractions(outboxRepository);
     }
 
     private PaymentOrder buildOrder(BigDecimal amount, PaymentMethod paymentMethod) {

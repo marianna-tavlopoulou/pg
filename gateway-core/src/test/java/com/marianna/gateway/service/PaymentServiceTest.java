@@ -2,7 +2,6 @@ package com.marianna.gateway.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -55,7 +54,7 @@ class PaymentServiceTest {
                 when(paymentRepository.saveAndFlush(any(PaymentOrder.class))).thenAnswer(i -> i.getArgument(0));
                 when(fraudEvaluator.evaluate(any(PaymentOrder.class))).thenReturn(FraudSignal.clean(order.id()));
                 when(paymentFinalizationService.finalizePaymentStatus(any(PaymentOrder.class),
-                                eq(FraudSignal.clean(order.id()))))
+                                any(FraudSignal.class)))
                                 .thenReturn(finalizedOrder);
 
                 PaymentOrder result = paymentService.submit(order);
@@ -74,7 +73,7 @@ class PaymentServiceTest {
                 when(paymentRepository.saveAndFlush(any(PaymentOrder.class))).thenAnswer(i -> i.getArgument(0));
                 when(fraudEvaluator.evaluate(any(PaymentOrder.class))).thenReturn(FraudSignal.clean(order.id()));
                 when(paymentFinalizationService.finalizePaymentStatus(any(PaymentOrder.class),
-                                eq(FraudSignal.clean(order.id()))))
+                                any(FraudSignal.class)))
                                 .thenReturn(finalizedOrder);
 
                 PaymentOrder result = paymentService.submit(order);

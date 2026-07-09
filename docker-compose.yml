@@ -13,7 +13,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gateway -d payment_gateway"]
+      test: [ "CMD-SHELL", "pg_isready -U gateway -d payment_gateway" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -25,10 +25,37 @@ services:
       - "6379:6379"
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
+  kafka:
+    image: apache/kafka:3.7.0
+    container_name: payment-gateway-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      # Node Identity & Dual-Role Coordination
+      # In KRaft mode, a node can act as a Broker, a Controller, or both.
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@localhost:29093'
+
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://localhost:9092'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT'
+
+      # Fixed Cryptographic Identification
+      # KRaft clusters require an explicit UUID cluster ID during initialization to format storage tracks.
+      CLUSTER_ID: '4L62YDgVSwK0I367A60AzA'
+
+      # Production environments require a minimum of 3 In-Sync Replicas (ISR) to protect against data loss.
+      # We override this requirement to 1 here so local single-broker context can write records smoothly.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_FLUSH_INTERVAL_MESSAGES: 1
 
 volumes:
   postgres_data:

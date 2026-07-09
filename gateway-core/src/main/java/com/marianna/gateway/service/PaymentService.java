@@ -6,9 +6,7 @@ import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
-import com.marianna.gateway.domain.FraudSignal;
 import com.marianna.gateway.domain.PaymentOrder;
-import com.marianna.gateway.domain.PaymentStatus;
 import com.marianna.gateway.port.FraudEvaluator;
 import com.marianna.gateway.port.PaymentRepository;
 
@@ -19,10 +17,13 @@ import lombok.extern.slf4j.Slf4j;
 public class PaymentService {
 
     private final PaymentRepository paymentRepository;
+    private final PaymentFinalizationService paymentFinalizationService;
     private final FraudEvaluator fraudEvaluator;
 
-    public PaymentService(PaymentRepository paymentRepository, FraudEvaluator fraudEvaluator) {
+    public PaymentService(PaymentRepository paymentRepository, FraudEvaluator fraudEvaluator,
+            PaymentFinalizationService paymentFinalizationService) {
         this.paymentRepository = paymentRepository;
+        this.paymentFinalizationService = paymentFinalizationService;
         this.fraudEvaluator = fraudEvaluator;
     }
 
@@ -36,7 +37,17 @@ public class PaymentService {
             return findExistingOrder(order);
         }
 
-        return finalizePaymentStatus(saved);
+        try {
+            return paymentFinalizationService.finalizePaymentStatus(saved, fraudEvaluator.evaluate(saved));
+        } catch (Exception e) {
+            // Finalization failed (outbox insertion, serialization, etc.)
+            // The PENDING row is already committed.
+            // The outbox poller will retry any partially-written rows.
+            // Client should poll GET /payments/{id} for resolution.
+            log.error("Finalization failed for payment id={}, returning PENDING. " +
+                    "OutboxPoller will retry.", saved.id(), e);
+            return saved;
+        }
     }
 
     public Optional<PaymentOrder> findPaymentByIdForMerchant(UUID id, UUID merchantId) {
@@ -54,28 +65,7 @@ public class PaymentService {
     }
 
     private PaymentOrder saveNewOrder(PaymentOrder order) {
-        return paymentRepository.saveAndFlush(order);
-    }
-
-    /**
-     * Removed @Transactional annotation because the atomicity of the status update
-     * is handled by the outbox pattern, as
-     * Redis and Postgres cannot share a transaction.
-     */
-    private PaymentOrder finalizePaymentStatus(PaymentOrder saved) {
-        FraudSignal signal = fraudEvaluator.evaluate(saved);
-
-        if (signal.shouldDecline()) {
-            log.debug("Customer: {} | payment id: {}, DECLINED", saved.customerId(), saved.id());
-            return paymentRepository.save(saved.withStatus(PaymentStatus.DECLINED)); // DECLINE: score >= 70
-        }
-
-        if (signal.riskScore() >= 40) {
-            log.debug("Customer: {} | payment id: {}, REVIEW", saved.customerId(), saved.id());
-            return paymentRepository.save(saved.withStatus(PaymentStatus.PROCESSING)); // REVIEW: 40 <= score < 70
-        }
-
-        log.debug("Customer: {} | payment id: {}, CLEAN", saved.customerId(), saved.id());
-        return paymentRepository.save(saved.withStatus(PaymentStatus.COMPLETED));
+        PaymentOrder newPaymentOrder = paymentRepository.saveAndFlush(order);
+        return newPaymentOrder;
     }
 }

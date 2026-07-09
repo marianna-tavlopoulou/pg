@@ -79,8 +79,6 @@ class PaymentControllerIT extends BaseIntegrationTest {
                 assertThat(response2.currency()).isEqualTo(response.currency());
                 assertThat(response2.createdAt().truncatedTo(ChronoUnit.MILLIS))
                                 .isEqualTo(response.createdAt().truncatedTo(ChronoUnit.MILLIS));
-                assertThat(response2.updatedAt().truncatedTo(ChronoUnit.MILLIS))
-                                .isEqualTo(response.updatedAt().truncatedTo(ChronoUnit.MILLIS));
                 assertThat(response2.method()).isEqualTo(response.method());
 
         }

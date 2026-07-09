@@ -29,10 +29,10 @@ public record PaymentOrder(
      */
     public static PaymentOrder create(UUID customerId, UUID merchantId, BigDecimal amount,
             Currency currency, PaymentMethod method,
-            String idempotencyKey, String description, Long version) {
+            String idempotencyKey, String description) {
         return new PaymentOrder(UUID.randomUUID(), customerId, merchantId, amount, currency,
                 method, PaymentStatus.PENDING, idempotencyKey, description,
-                Instant.now(), Instant.now(), version);
+                Instant.now(), Instant.now(), null);
     }
 
     /**

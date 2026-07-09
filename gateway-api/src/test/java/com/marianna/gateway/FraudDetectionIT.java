@@ -80,13 +80,14 @@ class FraudDetectionIT extends BaseIntegrationTest {
                 List<Integer> range = IntStream.rangeClosed(100, 120)
                                 .boxed()
                                 .toList();
+                UUID customerId = UUID.randomUUID();
                 for (Integer i : range) {
                         createPayment(
-                                        createPaymentRequest(i, PaymentMethod.CARD, UUID.randomUUID()),
+                                        createPaymentRequest(i, PaymentMethod.CARD, customerId),
                                         UUID.randomUUID().toString());
                 }
                 PaymentResponse response = createPayment(
-                                createPaymentRequest(111, PaymentMethod.CARD, UUID.randomUUID()),
+                                createPaymentRequest(111, PaymentMethod.CARD, customerId),
                                 UUID.randomUUID().toString());
                 assertThat(response.status()).isEqualTo(PaymentStatus.COMPLETED);
         }

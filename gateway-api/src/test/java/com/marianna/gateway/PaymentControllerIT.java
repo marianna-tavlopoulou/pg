@@ -129,12 +129,12 @@ class PaymentControllerIT extends BaseIntegrationTest {
         @DisplayName("Payments with amount 15000 → status DECLINED")
         void shouldDeclinePaymentWithVeryHighAmount() throws Exception {
 
-                PaymentRequest request = new PaymentRequest(UUID.randomUUID(), new BigDecimal(15000), Currency.EUR,
+                PaymentRequest request = new PaymentRequest(UUID.randomUUID(), new BigDecimal("15000"), Currency.EUR,
                                 PaymentMethod.CARD,
                                 "Order #1");
 
                 PaymentResponse response = createPayment(request, UUID.randomUUID().toString());
-                assertThat(response.amount()).isEqualByComparingTo(new BigDecimal(15000));
+                assertThat(response.amount()).isEqualByComparingTo(new BigDecimal("15000"));
                 assertThat(response.currency()).isEqualTo(Currency.EUR);
                 assertThat(response.id()).isNotNull();
                 assertThat(response.status()).isEqualTo(PaymentStatus.DECLINED);

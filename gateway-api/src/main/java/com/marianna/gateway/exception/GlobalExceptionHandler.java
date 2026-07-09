@@ -16,11 +16,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+import lombok.extern.slf4j.Slf4j;
+
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(PaymentNotFoundException.class)
     ProblemDetail handleNotFound(PaymentNotFoundException ex) {
+        log.error("Payment not found", ex);
         var p = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         p.setTitle("Payment Not Found");
         return p;
@@ -29,6 +33,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(IllegalStateException.class)
     ProblemDetail handleIllegalState(IllegalStateException ex) {
         var p = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        log.error("Illegal state transition", ex);
         p.setTitle("Invalid State Transition");
         return p;
     }
@@ -36,6 +41,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     ProblemDetail handleIllegalArgument(IllegalArgumentException ex) {
         var p = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        log.error("Invalid request", ex);
         p.setTitle("Invalid Request");
         return p;
     }
@@ -43,6 +49,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         var p = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        log.error("Data integrity violation", ex);
         p.setTitle("Idempotency key already exists");
         return p;
     }
@@ -50,7 +57,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(OptimisticLockingFailureException.class)
     ProblemDetail handleOptimisticLockingFailure(OptimisticLockingFailureException ex) {
         var p = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        log.error("Concurrent modification", ex);
         p.setTitle("Concurrent modification");
+        return p;
+    }
+
+    @ExceptionHandler(Exception.class)
+    ProblemDetail handleGenericException(Exception ex) {
+        log.error("Unhandled exception", ex);
+        var p = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+        p.setTitle("Internal Server Error");
         return p;
     }
 

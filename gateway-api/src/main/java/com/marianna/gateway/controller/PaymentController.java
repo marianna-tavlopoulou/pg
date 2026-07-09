@@ -50,7 +50,8 @@ public class PaymentController {
                                 ? ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                                                 .body(PaymentResponse.from(submittedOrder))
                                 : ResponseEntity.status(HttpStatus.CREATED)
-                                                .body(PaymentResponse.from(submittedOrder));
+                                                .body(PaymentResponse.from(submittedOrder)); // Even if the transaction
+                                                                                             // is pending return 201
         }
 
         @GetMapping("/{id}")

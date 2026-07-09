@@ -37,7 +37,17 @@ public class PaymentService {
             return findExistingOrder(order);
         }
 
-        return paymentFinalizationService.finalizePaymentStatus(saved, fraudEvaluator.evaluate(saved));
+        try {
+            return paymentFinalizationService.finalizePaymentStatus(saved, fraudEvaluator.evaluate(saved));
+        } catch (Exception e) {
+            // Finalization failed (outbox insertion, serialization, etc.)
+            // The PENDING row is already committed.
+            // The outbox poller will retry any partially-written rows.
+            // Client should poll GET /payments/{id} for resolution.
+            log.error("Finalization failed for payment id={}, returning PENDING. " +
+                    "OutboxPoller will retry.", saved.id(), e);
+            return saved;
+        }
     }
 
     public Optional<PaymentOrder> findPaymentByIdForMerchant(UUID id, UUID merchantId) {

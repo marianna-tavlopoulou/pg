@@ -20,7 +20,7 @@ import com.marianna.gateway.dto.PaymentResponse;
 import com.marianna.gateway.port.OutboxRepository;
 import com.marianna.gateway.port.PaymentRepository;
 
-class PaymentOrderAndOutboxEventConsistencyHappyPathIT extends BaseIntegrationTest {
+class PaymentAndOutboxConsistencyHappyPathIT extends BaseIntegrationTest {
 
     @Autowired
     OutboxRepository outboxRepository;

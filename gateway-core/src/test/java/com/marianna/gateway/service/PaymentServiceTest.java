@@ -127,6 +127,25 @@ class PaymentServiceTest {
                 verify(paymentFinalizationService, never()).finalizePaymentStatus(existingOrder, null);
         }
 
+        @Test
+        @DisplayName("When payment finalization throws an exception, the payment order should remain in PENDING state and be retrievable.")
+        void shouldReturnPendingPaymentWhenFinalizationThrowsException() {
+                PaymentOrder order = buildOrder(new BigDecimal("100.00"), PaymentMethod.BANK_TRANSFER);
+                when(paymentFinalizationService.finalizePaymentStatus(any(PaymentOrder.class), any(FraudSignal.class)))
+                                .thenThrow(new RuntimeException("Failed to finalize payment"));
+                when(paymentRepository.saveAndFlush(any(PaymentOrder.class))).thenAnswer(i -> i.getArgument(0));
+                when(fraudEvaluator.evaluate(any(PaymentOrder.class))).thenReturn(FraudSignal.clean(order.id()));
+
+                PaymentOrder result = paymentService.submit(order);
+
+                assertThat(result.status()).isEqualTo(PaymentStatus.PENDING);
+                verify(paymentFinalizationService, times(1)).finalizePaymentStatus(any(PaymentOrder.class),
+                                any(FraudSignal.class));
+                verify(paymentRepository, never()).save(any(PaymentOrder.class));
+                verify(paymentRepository, times(1)).saveAndFlush(any(PaymentOrder.class));
+                verify(fraudEvaluator, times(1)).evaluate(any(PaymentOrder.class));
+        }
+
         private PaymentOrder buildOrder(BigDecimal amount, PaymentMethod paymentMethod) {
                 return PaymentOrder.create(UUID.randomUUID(), UUID.randomUUID(), amount, Currency.EUR,
                                 paymentMethod, UUID.randomUUID().toString(), "Test");

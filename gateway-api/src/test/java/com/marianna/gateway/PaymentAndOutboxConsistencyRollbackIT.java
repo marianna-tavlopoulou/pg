@@ -29,12 +29,6 @@ class PaymentAndOutboxConsistencyRollbackIT extends BaseIntegrationTest {
     @Autowired
     PaymentRepository paymentRepository;
 
-    /*
-     * This test showed that when the outboxRepository.save() method throws an
-     * exception, the http request fails
-     * but we need to handle this exception and return 201 to the client. The
-     * payment_orders.status should be rolled back to PENDING.
-     */
     @Test
     @DisplayName("When a payment order is created and outboxRepository.save() throws an exception, payment_orders.status should be rolled back to PENDING.")
     void shouldRollBackPaymentOrderStatusWhenOutboxEventInsertionFails() throws Exception {
@@ -51,6 +45,32 @@ class PaymentAndOutboxConsistencyRollbackIT extends BaseIntegrationTest {
 
         PaymentResponse response2 = getPayment(response.id().toString());
         assertThat(response2.status()).isEqualTo(PaymentStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("When an outbox event fails to be inserted, the payment order should remain in PENDING state and be retrievable.")
+    void shouldReturnSamePendingPaymentWhenRetryWithSameIdempotencyKey() throws Exception {
+
+        UUID customerId = UUID.randomUUID();
+        UUID idempotencyKey = UUID.randomUUID();
+
+        PaymentResponse response = createPayment(
+                new PaymentRequest(customerId, new BigDecimal(9000), Currency.EUR, PaymentMethod.CARD,
+                        "order #1"),
+                idempotencyKey.toString());
+
+        List<PaymentEvent> events = outboxRepository.findUnpublishedEvents(10);
+        assertThat(events).isEmpty();
+
+        PaymentResponse response2 = getPayment(response.id().toString());
+        assertThat(response2.status()).isEqualTo(PaymentStatus.PENDING);
+
+        PaymentResponse response3 = createPayment(
+                new PaymentRequest(customerId, new BigDecimal(9000), Currency.EUR, PaymentMethod.CARD,
+                        "order #1"),
+                idempotencyKey.toString());
+        assertThat(response3.status()).isEqualTo(PaymentStatus.PENDING);
+        assertThat(response3.id()).isEqualTo(response.id());
     }
 
 }

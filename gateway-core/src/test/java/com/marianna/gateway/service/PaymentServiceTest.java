@@ -107,12 +107,11 @@ class PaymentServiceTest {
         @DisplayName("Duplicate idempotency key returns existing payment without reprocessing")
         void shouldReturnExistingOnDuplicateKey() {
 
-                PaymentOrder incomingOrder = buildOrder(new BigDecimal("50.00"), PaymentMethod.CARD)
-                                .withStatus(PaymentStatus.COMPLETED);
+                PaymentOrder incomingOrder = buildOrder(new BigDecimal("50.00"), PaymentMethod.CARD);
                 PaymentOrder existingOrder = new PaymentOrder(incomingOrder.id(), incomingOrder.customerId(),
                                 incomingOrder.merchantId(), incomingOrder.amount(), incomingOrder.currency(),
-                                incomingOrder.method(),
-                                incomingOrder.status(), incomingOrder.idempotencyKey(), incomingOrder.description(),
+                                incomingOrder.method(), PaymentStatus.COMPLETED, incomingOrder.idempotencyKey(),
+                                incomingOrder.description(),
                                 incomingOrder.createdAt(), incomingOrder.updatedAt(), 0L);
 
                 when(paymentRepository.findByIdempotencyKey(any())).thenReturn(Optional.of(existingOrder));

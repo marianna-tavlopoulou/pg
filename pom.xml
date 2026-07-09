@@ -23,6 +23,7 @@
     <module>gateway-persistence</module>
     <module>gateway-batch</module>
     <module>gateway-api</module>
+    <module>gateway-messaging</module>
   </modules>
 
   <properties>
@@ -46,6 +47,11 @@
       <dependency>
         <groupId>com.marianna</groupId>
         <artifactId>gateway-persistence</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.marianna</groupId>
+        <artifactId>gateway-messaging</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>

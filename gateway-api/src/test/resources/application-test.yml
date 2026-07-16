@@ -27,3 +27,4 @@ spring:
   threads:
     virtual:
       enabled: false
+gateway.messaging.payment-events-topic: payment-events

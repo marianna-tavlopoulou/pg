@@ -4,6 +4,6 @@ import com.marianna.gateway.domain.PaymentEvent;
 
 public interface EventPublisher {
 
-    void publish(PaymentEvent event, String customerId);
+    void publish(PaymentEvent event);
 
 }

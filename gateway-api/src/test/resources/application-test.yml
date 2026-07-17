@@ -27,4 +27,15 @@ spring:
   threads:
     virtual:
       enabled: false
-gateway.messaging.payment-events-topic: payment-events
+  kafka:
+    bootstrap-servers: localhost:9092
+    admin:
+      auto-create: false # stops KafkaAdmin trying to create topics on startup
+    properties:
+      "request.timeout.ms": 1000  # fail fast if something does try to connect
+      "default.api.timeout.ms": 1000
+gateway:
+  messaging:
+    payment-events-topic: payment-events
+    kafka: 
+      enabled: false

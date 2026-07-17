@@ -39,7 +39,7 @@ services:
       # In KRaft mode, a node can act as a Broker, a Controller, or both.
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: 'broker,controller'
-      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@localhost:29093'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@payment-gateway-kafka:29093'
 
       KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093'
       KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://localhost:9092'
@@ -57,5 +57,9 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_LOG_FLUSH_INTERVAL_MESSAGES: 1
 
+    volumes:
+      - kafka_data:/tmp/kraft-combined-logs
+
 volumes:
   postgres_data:
+  kafka_data:

@@ -1,1 +1,3 @@
-gateway.messaging.payment-events-topic: payment-events
+gateway:
+  messaging:
+    payment-events-topic: "payment-events"

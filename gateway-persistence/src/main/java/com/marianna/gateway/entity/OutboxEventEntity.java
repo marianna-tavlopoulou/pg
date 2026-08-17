@@ -30,6 +30,9 @@ public class OutboxEventEntity {
     @Column(name = "aggregate_id", nullable = false, columnDefinition = "uuid")
     private UUID aggregateId; // = PaymentOrder.id()
 
+    @Column(name = "customer_id", nullable = false, columnDefinition = "uuid")
+    private UUID customerId;
+
     @Column(name = "event_type", nullable = false)
     private String eventType; // = PaymentEventType.name()
 

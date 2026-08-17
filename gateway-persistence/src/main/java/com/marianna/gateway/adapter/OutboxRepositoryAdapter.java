@@ -54,6 +54,7 @@ public class OutboxRepositoryAdapter implements OutboxRepository {
     private OutboxEventEntity toEntity(PaymentEvent event) {
         var e = new OutboxEventEntity();
         e.setId(event.eventId());
+        e.setCustomerId(event.customerId());
         e.setEventType(event.eventType().name());
         e.setAggregateId(event.aggregateId());
         e.setPublished(false);
@@ -62,7 +63,8 @@ public class OutboxRepositoryAdapter implements OutboxRepository {
     }
 
     private PaymentEvent toDomain(OutboxEventEntity e) {
-        return new PaymentEvent(e.getId(), e.getAggregateId(), PaymentEventType.valueOf(e.getEventType()),
+        return new PaymentEvent(e.getId(), e.getAggregateId(), e.getCustomerId(),
+                PaymentEventType.valueOf(e.getEventType()),
                 e.getPayload(), e.getCreatedAt());
     }
 

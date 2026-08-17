@@ -44,7 +44,8 @@ public class PaymentFinalizationService {
         paymentRepository.save(finalized);
         String payload = serialize(finalized);
         outboxRepository
-                .save(new PaymentEvent(UUID.randomUUID(), finalized.id(), eventTypeForStatus(finalized.status()),
+                .save(new PaymentEvent(UUID.randomUUID(), finalized.id(), finalized.customerId(),
+                        eventTypeForStatus(finalized.status()),
                         payload, Instant.now()));
         return finalized;
     }

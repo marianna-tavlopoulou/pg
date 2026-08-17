@@ -55,3 +55,8 @@ springdoc:
 logging:
   level:
     com.marianna.gateway: DEBUG
+
+gateway:
+  messaging:
+    payment-events-topic: payment-events
+

@@ -1,0 +1,7 @@
+{
+    "eventId": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+    "aggregateId": "f81d4fae-7dec-11d0-a765-00a0c91e6bf6",
+    "eventType": "PAYMENT_COMPLETED",
+    "payload": "{"id":"e3b0c442-98fc-1c14-9afb-f3c730225432","customerId":"7bc5843a-73d6-47b2-bd77-cfc87f9d86b7","merchantId":"91a2e3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b","amount":1250.50,"currency":"USD","method":"CREDIT_CARD","status":"COMPLETED","idempotencyKey":"ikey_9a8b7c6d5e4f3g2h1","description":"Premium Subscription - Annual Plan","createdAt":"2026-07-09T14: 20: 00Z","updatedAt":"2026-07-09T14: 23: 00Z","version":1}",
+    "occurredAt": "2026-07-09T14:23:00Z"
+}

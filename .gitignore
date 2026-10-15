@@ -32,8 +32,6 @@ out/
 
 # ====== Build Tools (Maven / Gradle) ======
 .mvn/
-mvnw
-mvnw.cmd
 .gradle/
 gradlew
 gradlew.cmd

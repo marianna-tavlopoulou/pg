@@ -3,18 +3,20 @@ package com.marianna.gateway.messaging;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.marianna.gateway.domain.Currency;
 import com.marianna.gateway.domain.PaymentEvent;
 import com.marianna.gateway.domain.PaymentEventType;
@@ -22,28 +24,41 @@ import com.marianna.gateway.domain.PaymentMethod;
 import com.marianna.gateway.domain.PaymentOrder;
 import com.marianna.gateway.domain.PaymentStatus;
 
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 @ExtendWith(MockitoExtension.class)
-@Disabled
 class KafkaEventPublisherTest {
+
+    private static final String TOPIC = "payment-events";
 
     @Mock
     private KafkaTemplate<String, String> kafkaTemplate;
 
+    @Mock
+    private SendResult<String, String> sendResult;
+
+    @Mock
+    private RecordMetadata recordMetadata;
+
     private KafkaEventPublisher kafkaEventPublisher;
     private ObjectMapper objectMapper;
-    @Value("${gateway.messaging.payment-events-topic}")
-    private String topic;
-    private String jsonPaymentEvent = "";
 
     @BeforeEach
     void setUp() {
-        kafkaEventPublisher = new KafkaEventPublisher(kafkaTemplate, topic, objectMapper);
-        objectMapper = new ObjectMapper();
+        objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+        kafkaEventPublisher = new KafkaEventPublisher(kafkaTemplate, TOPIC, objectMapper);
     }
 
     @Test
     @DisplayName("Should publish event to Kafka with customerId as the routing partition key")
     void shouldPublishWithCustomerIdAsPartitionKey() throws Exception {
+        when(kafkaTemplate.send(anyString(), anyString(), anyString()))
+                .thenReturn(CompletableFuture.completedFuture(sendResult));
+        when(sendResult.getRecordMetadata()).thenReturn(recordMetadata);
+
         UUID aggregateId = UUID.randomUUID();
         UUID eventId = UUID.randomUUID();
         UUID customerId = UUID.randomUUID();
@@ -56,6 +71,9 @@ class KafkaEventPublisherTest {
                 Instant.now());
         String jsonEvent = objectMapper.writeValueAsString(event);
 
+        kafkaEventPublisher.publish(event);
+
+        verify(kafkaTemplate).send(eq(TOPIC), eq(customerId.toString()), eq(jsonEvent));
     }
 
 }

@@ -31,7 +31,6 @@ out/
 *.launch
 
 # ====== Build Tools (Maven / Gradle) ======
-.mvn/
 .gradle/
 gradlew
 gradlew.cmd

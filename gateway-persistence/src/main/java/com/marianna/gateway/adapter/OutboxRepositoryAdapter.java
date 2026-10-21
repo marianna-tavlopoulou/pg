@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.marianna.gateway.domain.PaymentEvent;
 import com.marianna.gateway.domain.PaymentEventType;
@@ -46,6 +47,7 @@ public class OutboxRepositoryAdapter implements OutboxRepository {
     }
 
     @Override
+    @Transactional
     public void markAsPublished(UUID eventId) {
         jpa.markAsPublished(eventId);
         log.debug("Marked outbox event as published: {}", eventId);
@@ -54,6 +56,7 @@ public class OutboxRepositoryAdapter implements OutboxRepository {
     private OutboxEventEntity toEntity(PaymentEvent event) {
         var e = new OutboxEventEntity();
         e.setId(event.eventId());
+        e.setCustomerId(event.customerId());
         e.setEventType(event.eventType().name());
         e.setAggregateId(event.aggregateId());
         e.setPublished(false);
@@ -62,7 +65,8 @@ public class OutboxRepositoryAdapter implements OutboxRepository {
     }
 
     private PaymentEvent toDomain(OutboxEventEntity e) {
-        return new PaymentEvent(e.getId(), e.getAggregateId(), PaymentEventType.valueOf(e.getEventType()),
+        return new PaymentEvent(e.getId(), e.getAggregateId(), e.getCustomerId(),
+                PaymentEventType.valueOf(e.getEventType()),
                 e.getPayload(), e.getCreatedAt());
     }
 

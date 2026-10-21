@@ -2,6 +2,7 @@ package com.marianna.gateway.poller;
 
 import java.util.List;
 
+import org.apache.kafka.common.errors.TimeoutException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -38,6 +39,12 @@ public class OutboxPoller {
                     log.error("Failed to mark event {} as published for aggregateId: {} for customerId: {}", event.eventType(), event.aggregateId(), event.customerId(), e);
                 }
             } catch (Exception e) {
+                if (e instanceof TimeoutException
+                        || e.getCause() instanceof TimeoutException
+                        || e.getCause() instanceof java.util.concurrent.TimeoutException) {
+                    log.error("Timeout occurred while publishing event {} for aggregateId: {} for customerId: {}", event.eventType(), event.aggregateId(), event.customerId());
+                    return; // Exit the loop to retry on the next poll cycle, preventing further timeouts in this cycle
+                }
                 // Log the error and continue with the next event
                 log.error("Failed to publish event {} for aggregateId: {} for customerId: {}", event.eventType(), event.aggregateId(), event.customerId(), e);
             }

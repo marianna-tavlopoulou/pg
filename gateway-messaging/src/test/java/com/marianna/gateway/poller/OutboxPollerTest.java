@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -99,6 +100,41 @@ class OutboxPollerTest {
         verify(eventPublisher).publish(nextEvent);
         verify(outboxRepository, never()).markAsPublished(eventWithoutCustomerId.eventId());
         verify(outboxRepository).markAsPublished(nextEvent.eventId());
+    }
+
+    @Test
+    @DisplayName("Stops the batch when publishing times out")
+    void shouldStopBatchWhenPublishingTimesOut() {
+        PaymentEvent timedOutEvent = event();
+        PaymentEvent nextEvent = event();
+        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(timedOutEvent, nextEvent));
+        doThrow(new RuntimeException("Timed out waiting for Kafka ack",
+                new TimeoutException("Kafka acknowledgement timed out")))
+                .when(eventPublisher).publish(timedOutEvent);
+
+        outboxPoller.pollOutbox();
+
+        verify(eventPublisher).publish(timedOutEvent);
+        verify(eventPublisher, never()).publish(nextEvent);
+        verify(outboxRepository, never()).markAsPublished(timedOutEvent.eventId());
+        verify(outboxRepository, never()).markAsPublished(nextEvent.eventId());
+    }
+
+    @Test
+    @DisplayName("Stops the batch when publishing throws Kafka TimeoutException")
+    void shouldStopBatchWhenPublishingThrowsKafkaTimeoutException() {
+        PaymentEvent timedOutEvent = event();
+        PaymentEvent nextEvent = event();
+        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(timedOutEvent, nextEvent));
+        doThrow(new org.apache.kafka.common.errors.TimeoutException("Kafka metadata timed out"))
+                .when(eventPublisher).publish(timedOutEvent);
+
+        outboxPoller.pollOutbox();
+
+        verify(eventPublisher).publish(timedOutEvent);
+        verify(eventPublisher, never()).publish(nextEvent);
+        verify(outboxRepository, never()).markAsPublished(timedOutEvent.eventId());
+        verify(outboxRepository, never()).markAsPublished(nextEvent.eventId());
     }
 
     @Test

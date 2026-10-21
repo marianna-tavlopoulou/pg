@@ -39,3 +39,8 @@ gateway:
     payment-events-topic: payment-events
     kafka: 
       enabled: false
+  poller:
+    outbox:
+      enabled: false
+      fixed-delay-ms: 5000
+      initial-delay-ms: 10000

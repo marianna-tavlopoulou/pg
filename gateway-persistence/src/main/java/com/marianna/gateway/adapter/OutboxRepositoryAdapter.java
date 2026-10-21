@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.marianna.gateway.domain.PaymentEvent;
 import com.marianna.gateway.domain.PaymentEventType;
@@ -46,6 +47,7 @@ public class OutboxRepositoryAdapter implements OutboxRepository {
     }
 
     @Override
+    @Transactional
     public void markAsPublished(UUID eventId) {
         jpa.markAsPublished(eventId);
         log.debug("Marked outbox event as published: {}", eventId);

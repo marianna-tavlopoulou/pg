@@ -2,6 +2,7 @@ package com.marianna.gateway.poller;
 
 import java.util.List;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Component 
 @Slf4j 
+@ConditionalOnProperty(name = "gateway.poller.outbox.enabled", havingValue = "true", matchIfMissing = true)
 public class OutboxPoller {
 
     private final EventPublisher eventPublisher;
@@ -30,10 +32,14 @@ public class OutboxPoller {
         for (PaymentEvent event : unpublishedEvents) {
             try {
                 eventPublisher.publish(event);
-                outboxRepository.markAsPublished(event.eventId());
+                try {
+                    outboxRepository.markAsPublished(event.eventId());
+                } catch (Exception e) {
+                    log.error("Failed to mark event {} as published for aggregateId: {} for customerId: {}", event.eventType(), event.aggregateId(), event.customerId(), e);
+                }
             } catch (Exception e) {
                 // Log the error and continue with the next event
-                log.error("Failed to publish event {} for aggregateId: {} for customerId: {}", event.eventType(), event.aggregateId(), event.customerId().toString(), e);
+                log.error("Failed to publish event {} for aggregateId: {} for customerId: {}", event.eventType(), event.aggregateId(), event.customerId(), e);
             }
         }
     }

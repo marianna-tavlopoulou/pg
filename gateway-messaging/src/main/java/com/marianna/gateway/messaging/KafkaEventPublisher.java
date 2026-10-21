@@ -1,6 +1,7 @@
 package com.marianna.gateway.messaging;
 
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -20,12 +21,15 @@ public class KafkaEventPublisher implements EventPublisher {
 
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final String topic;
+    private final Integer sendTimeoutMs;
     private final ObjectMapper objectMapper;
 
     public KafkaEventPublisher(KafkaTemplate<String, String> kafkaTemplate,
-            @Value("${gateway.messaging.payment-events-topic}") String topic, ObjectMapper objectMapper) {
+            @Value("${gateway.messaging.payment-events-topic}") String topic,
+            @Value("${gateway.messaging.send-timeout-ms}") Integer sendTimeoutMs, ObjectMapper objectMapper) {
         this.kafkaTemplate = kafkaTemplate;
         this.topic = topic;
+        this.sendTimeoutMs = sendTimeoutMs;
         this.objectMapper = objectMapper;
     }
 
@@ -47,7 +51,7 @@ public class KafkaEventPublisher implements EventPublisher {
             // in the OutboxPoller is only called after confirmed delivery.
             // If this throws, the poller catches per-row, logs, and retries
             // on the next poll cycle — at-least-once delivery guaranteed.
-            SendResult<String, String> result = kafkaTemplate.send(topic, event.customerId().toString(), payload).get();
+            SendResult<String, String> result = kafkaTemplate.send(topic, event.customerId().toString(), payload).get(sendTimeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
             var metadata = result.getRecordMetadata();
             log.info("Successfully published event {} to partition {} at offset {} for payment: {}",
                     event.eventType(),
@@ -63,6 +67,10 @@ public class KafkaEventPublisher implements EventPublisher {
                     event.eventType(),
                     topic, event.aggregateId(), event.customerId().toString(), e);
             throw new RuntimeException("Interrupted waiting for Kafka ack, event=" + event.eventId(), e);
+        } catch (TimeoutException e) {
+            log.error("Timeout while waiting for Kafka ack for event {} to topic {} for aggregateId: {} for customerId: {}", event.eventType(),
+                        topic, event.aggregateId(), event.customerId().toString(), e);
+            throw new RuntimeException("Timed out waiting for Kafka ack, event=" + event.eventId(), e);
         }
 
     }

@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,8 +26,10 @@ import com.marianna.gateway.domain.PaymentMethod;
 import com.marianna.gateway.domain.PaymentOrder;
 import com.marianna.gateway.domain.PaymentStatus;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -49,7 +53,7 @@ class KafkaEventPublisherTest {
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
-        kafkaEventPublisher = new KafkaEventPublisher(kafkaTemplate, TOPIC, objectMapper);
+        kafkaEventPublisher = new KafkaEventPublisher(kafkaTemplate, TOPIC, 5000, objectMapper);
     }
 
     @Test
@@ -74,6 +78,41 @@ class KafkaEventPublisherTest {
         kafkaEventPublisher.publish(event);
 
         verify(kafkaTemplate).send(eq(TOPIC), eq(customerId.toString()), eq(jsonEvent));
+    }
+
+    @Test
+    @DisplayName("Should fail when waiting for Kafka acknowledgement times out")
+    void shouldThrowWhenKafkaAcknowledgementTimesOut() throws Exception {
+        PaymentEvent event = event();
+        TimeoutException timeout = new TimeoutException("Kafka acknowledgement timed out");
+        @SuppressWarnings("unchecked")
+        CompletableFuture<SendResult<String, String>> sendFuture = mock(CompletableFuture.class);
+        when(kafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(sendFuture);
+        when(sendFuture.get(5000, TimeUnit.MILLISECONDS)).thenThrow(timeout);
+
+        assertThatThrownBy(() -> kafkaEventPublisher.publish(event))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Timed out waiting for Kafka ack")
+                .hasCause(timeout);
+    }
+
+    @Test
+    @DisplayName("Should preserve the cause when Kafka returns a failed future")
+    void shouldPreserveCauseWhenKafkaFutureFails() {
+        PaymentEvent event = event();
+        RuntimeException failure = new RuntimeException("Kafka send failed");
+        when(kafkaTemplate.send(anyString(), anyString(), anyString()))
+                .thenReturn(CompletableFuture.failedFuture(failure));
+
+        assertThatThrownBy(() -> kafkaEventPublisher.publish(event))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Failed to publish event")
+                .hasCause(failure);
+    }
+
+    private PaymentEvent event() {
+        return new PaymentEvent(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                PaymentEventType.PAYMENT_COMPLETED, "{}", Instant.now());
     }
 
 }

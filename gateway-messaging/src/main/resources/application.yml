@@ -1,6 +1,7 @@
 gateway:
   messaging:
     payment-events-topic: "payment-events"
+    send-timeout-ms: 15000
   poller:
     outbox:
       enabled: true

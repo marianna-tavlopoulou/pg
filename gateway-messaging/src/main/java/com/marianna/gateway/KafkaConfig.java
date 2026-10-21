@@ -55,6 +55,7 @@ public class KafkaConfig {
 
         configProps.put(ProducerConfig.ACKS_CONFIG, "all"); // Wait for all replicas to acknowledge
         configProps.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true); // Enable idempotence to avoid duplicates
+        configProps.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, 15_000);
         return new DefaultKafkaProducerFactory<>(configProps);
     }
 

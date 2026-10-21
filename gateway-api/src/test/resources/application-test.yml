@@ -37,6 +37,7 @@ spring:
 gateway:
   messaging:
     payment-events-topic: payment-events
+    send-timeout-ms: 5000
     kafka: 
       enabled: false
   poller:

@@ -89,6 +89,22 @@ class OutboxPollerTest {
     }
 
     @Test
+    @DisplayName("Skips a customer's later events when marking an event as published fails")
+    void shouldSkipCustomerWhenMarkAsPublishedFails() {
+        PaymentEvent firstEvent = event();
+        PaymentEvent nextEvent = eventForCustomerId(firstEvent.customerId());
+        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(firstEvent, nextEvent));
+        doThrow(new RuntimeException("Mark failed")).when(outboxRepository).markAsPublished(firstEvent.eventId());
+
+        outboxPoller.pollOutbox();
+
+        verify(eventPublisher).publish(firstEvent);
+        verify(eventPublisher, never()).publish(nextEvent);
+        verify(outboxRepository).markAsPublished(firstEvent.eventId());
+        verify(outboxRepository, never()).markAsPublished(nextEvent.eventId());
+    }
+
+    @Test
     @DisplayName("A null customerId does not abort the batch")
     void shouldContinueBatchWhenCustomerIdIsNull() {
         PaymentEvent eventWithoutCustomerId = new PaymentEvent(UUID.randomUUID(), UUID.randomUUID(), null,

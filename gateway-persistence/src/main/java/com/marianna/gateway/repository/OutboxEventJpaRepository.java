@@ -13,7 +13,7 @@ import com.marianna.gateway.entity.OutboxEventEntity;
 
 public interface OutboxEventJpaRepository extends JpaRepository<OutboxEventEntity, UUID> {
 
-    @Query("SELECT e FROM OutboxEventEntity e WHERE e.published = false ORDER BY e.createdAt ASC")
+    @Query("SELECT e FROM OutboxEventEntity e WHERE e.published = false AND e.deadLettered = false ORDER BY e.createdAt ASC")
     List<OutboxEventEntity> findUnpublishedEvents(Pageable pageable);
 
     @Modifying

@@ -36,6 +36,7 @@ public class OutboxRepositoryAdapter implements OutboxRepository {
     @Override
     public List<PaymentEvent> findUnpublishedEvents(int limit) {
         return jpa.findUnpublishedEvents(Pageable.ofSize(limit)).stream()
+                .filter(e-> !e.isDeadLettered())
                 .map(this::toDomain)
                 .collect(Collectors.toList());
     }

@@ -72,17 +72,20 @@ class OutboxPollerTest {
     @Test
     @DisplayName("Continues publishing later events when publishing an event fails")
     void shouldContinueWhenPublishingAnEventFails() {
-        PaymentEvent failedEvent = event();
-        PaymentEvent nextEvent = event();
-        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent, nextEvent));
-        doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
+        PaymentEvent failedEventCustomerX = event();
+        PaymentEvent nextEventCustomerX = eventForCustomerId(failedEventCustomerX.customerId());
+        PaymentEvent nextEventCustomerY = event();
+
+        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEventCustomerX, nextEventCustomerY, nextEventCustomerX));
+        doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEventCustomerX);
 
         outboxPoller.pollOutbox();
 
-        verify(eventPublisher).publish(failedEvent);
-        verify(eventPublisher).publish(nextEvent);
-        verify(outboxRepository, never()).markAsPublished(failedEvent.eventId());
-        verify(outboxRepository).markAsPublished(nextEvent.eventId());
+        verify(eventPublisher).publish(failedEventCustomerX);
+        verify(eventPublisher, never()).publish(nextEventCustomerX);
+        verify(eventPublisher).publish(nextEventCustomerY);
+        verify(outboxRepository, never()).markAsPublished(failedEventCustomerX.eventId());
+        verify(outboxRepository).markAsPublished(nextEventCustomerY.eventId());
     }
 
     @Test
@@ -155,6 +158,11 @@ class OutboxPollerTest {
 
     private PaymentEvent event() {
         return new PaymentEvent(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                PaymentEventType.PAYMENT_COMPLETED, "{}", Instant.now());
+    }
+
+    private PaymentEvent eventForCustomerId(UUID customerId) {
+        return new PaymentEvent(UUID.randomUUID(), UUID.randomUUID(), customerId,
                 PaymentEventType.PAYMENT_COMPLETED, "{}", Instant.now());
     }
 

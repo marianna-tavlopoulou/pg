@@ -14,6 +14,10 @@ public interface OutboxRepository {
 
     void markAsPublished(UUID eventId);
 
+    int recordFailure(UUID eventId, String error);
+
+    void markAsDeadLettered(UUID eventId);
+
     Optional<PaymentEvent> findByAggregateId(UUID aggregateId);
 
 }

@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.EntityNotFoundException;
 import com.marianna.gateway.domain.PaymentEvent;
 import com.marianna.gateway.domain.PaymentEventType;
 import com.marianna.gateway.entity.OutboxEventEntity;
@@ -52,6 +53,25 @@ public class OutboxRepositoryAdapter implements OutboxRepository {
     public void markAsPublished(UUID eventId) {
         jpa.markAsPublished(eventId);
         log.debug("Marked outbox event as published: {}", eventId);
+    }
+
+    @Override
+    @Transactional
+    public int recordFailure(UUID eventId, String error) {
+        OutboxEventEntity event = jpa.findByIdForUpdate(eventId)
+                .orElseThrow(() -> new EntityNotFoundException("Outbox event not found: " + eventId));
+        int attempts = event.getAttempts() + 1;
+        event.setAttempts(attempts);
+        event.setLastError(error);
+        log.debug("Recorded failure for outbox event {} (attempt {})", eventId, attempts);
+        return attempts;
+    }
+
+    @Override
+    @Transactional
+    public void markAsDeadLettered(UUID eventId) {
+        jpa.markAsDeadLettered(eventId);
+        log.debug("Marked outbox event as dead-lettered: {}", eventId);
     }
 
     private OutboxEventEntity toEntity(PaymentEvent event) {

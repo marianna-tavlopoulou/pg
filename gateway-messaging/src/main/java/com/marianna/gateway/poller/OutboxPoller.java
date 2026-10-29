@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.apache.kafka.common.errors.TimeoutException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -23,10 +24,13 @@ public class OutboxPoller {
 
     private final EventPublisher eventPublisher;
     private final OutboxRepository outboxRepository;
+    private final int maxAttempts;
 
-    public OutboxPoller(EventPublisher eventPublisher, OutboxRepository outboxRepository) {
+    public OutboxPoller(EventPublisher eventPublisher, OutboxRepository outboxRepository,
+            @Value("${gateway.poller.outbox.max-attempts:5}") int maxAttempts) {
         this.eventPublisher = eventPublisher;
         this.outboxRepository = outboxRepository;
+        this.maxAttempts = maxAttempts;
     }
 
     @Scheduled(fixedDelayString = "${gateway.poller.outbox.fixed-delay-ms}", initialDelayString = "${gateway.poller.outbox.initial-delay-ms}")

@@ -38,7 +38,7 @@ class OutboxPollerTest {
 
     @BeforeEach
     void setUp() {
-        outboxPoller = new OutboxPoller(eventPublisher, outboxRepository);
+        outboxPoller = new OutboxPoller(eventPublisher, outboxRepository, 5);
     }
 
     @Test
@@ -102,6 +102,54 @@ class OutboxPollerTest {
         verify(eventPublisher, never()).publish(nextEvent);
         verify(outboxRepository).markAsPublished(firstEvent.eventId());
         verify(outboxRepository, never()).markAsPublished(nextEvent.eventId());
+    }
+
+    @Test
+    @DisplayName("Records a publish failure below the maximum attempts without sending to DLT")
+    void shouldRecordFailureBelowMaxAttemptsWithoutDeadLettering() {
+        PaymentEvent failedEvent = event();
+        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent));
+        doThrow(new RuntimeException("Kafka unavailable")).when(eventPublisher).publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "Kafka unavailable")).thenReturn(2);
+
+        outboxPoller.pollOutbox();
+
+        verify(outboxRepository).recordFailure(failedEvent.eventId(), "Kafka unavailable");
+        verify(eventPublisher, never()).publishToDeadLetter(failedEvent, "Kafka unavailable");
+        verify(outboxRepository, never()).markAsDeadLettered(failedEvent.eventId());
+    }
+
+    @Test
+    @DisplayName("Dead-letters an event at max attempts and continues with later events for that customer")
+    void shouldDeadLetterAtMaxAttemptsAndContinueCustomerEvents() {
+        PaymentEvent failedEvent = event();
+        PaymentEvent nextEvent = eventForCustomerId(failedEvent.customerId());
+        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent, nextEvent));
+        doThrow(new RuntimeException("Kafka unavailable")).when(eventPublisher).publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "Kafka unavailable")).thenReturn(5);
+
+        outboxPoller.pollOutbox();
+
+        verify(outboxRepository).recordFailure(failedEvent.eventId(), "Kafka unavailable");
+        verify(eventPublisher).publishToDeadLetter(failedEvent, "Kafka unavailable");
+        verify(outboxRepository).markAsDeadLettered(failedEvent.eventId());
+        verify(eventPublisher).publish(nextEvent);
+        verify(outboxRepository).markAsPublished(nextEvent.eventId());
+    }
+
+    @Test
+    @DisplayName("Does not record a failure when publishing times out")
+    void shouldNotRecordFailureWhenPublishingTimesOut() {
+        PaymentEvent timedOutEvent = event();
+        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(timedOutEvent));
+        doThrow(new RuntimeException("Timed out waiting for Kafka ack",
+                new TimeoutException("Kafka acknowledgement timed out")))
+                .when(eventPublisher).publish(timedOutEvent);
+
+        outboxPoller.pollOutbox();
+
+        verify(outboxRepository, never()).recordFailure(timedOutEvent.eventId(), "Timed out waiting for Kafka ack");
+        verify(eventPublisher, never()).publishToDeadLetter(timedOutEvent, "Timed out waiting for Kafka ack");
     }
 
     @Test

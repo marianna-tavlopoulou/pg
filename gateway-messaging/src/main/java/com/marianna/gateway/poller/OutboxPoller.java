@@ -37,14 +37,15 @@ public class OutboxPoller {
         for (PaymentEvent event : unpublishedEvents) {
             try {
                 if (failedCustomerIds.contains(event.customerId())) {
-                    log.info("Skipping event {} for aggregateId: {} for customerId: {} because a previous event for this customer failed to publish in this poll cycle", event.eventType(), event.aggregateId(), event.customerId());
+                    log.warn("Skipping event {} for aggregateId: {} for customerId: {} because a previous event for this customer failed to publish in this poll cycle", event.eventType(), event.aggregateId(), event.customerId());
                     continue;
                 }
                 eventPublisher.publish(event);
                 try {
                     outboxRepository.markAsPublished(event.eventId());
                 } catch (Exception e) {
-                    log.error("Failed to mark event {} as published for aggregateId: {} for customerId: {}", event.eventType(), event.aggregateId(), event.customerId(), e);
+                    log.error("Failed to mark event {} with eventId: {} as published for aggregateId: {} for customerId: {}", event.eventType(), event.eventId(), event.aggregateId(), event.customerId(), e);
+                    failedCustomerIds.add(event.customerId());
                 }
             } catch (Exception e) {
                 if (e instanceof TimeoutException

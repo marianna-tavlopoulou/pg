@@ -70,7 +70,7 @@ class OutboxPollerTest {
     }
 
     @Test
-    @DisplayName("Continues publishing later events when publishing an event fails")
+    @DisplayName("Skips the failed customer’s later events but continues with other customers")
     void shouldContinueWhenPublishingAnEventFails() {
         PaymentEvent failedEventCustomerX = event();
         PaymentEvent nextEventCustomerX = eventForCustomerId(failedEventCustomerX.customerId());

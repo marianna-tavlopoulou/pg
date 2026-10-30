@@ -126,7 +126,9 @@ class OutboxPollerTest {
     @DisplayName("Retries dead-letter publishing next cycle without marking the event dead-lettered")
     void shouldRetryDeadLetterPublishOnNextPoll() {
         PaymentEvent failedEvent = event();
-        when(outboxRepository.findUnpublishedEvents(30)).thenAnswer(invocation -> List.of(failedEvent));
+        PaymentEvent nextEvent = eventForCustomerId(failedEvent.customerId());
+        when(outboxRepository.findUnpublishedEvents(30))
+                .thenAnswer(invocation -> List.of(failedEvent, nextEvent));
         doThrow(new RuntimeException("Serialization failed")).when(eventPublisher).publish(failedEvent);
         when(outboxRepository.recordFailure(failedEvent.eventId(), "Serialization failed")).thenReturn(5, 6);
         doThrow(new RuntimeException("DLT unavailable"))
@@ -136,10 +138,13 @@ class OutboxPollerTest {
         outboxPoller.pollOutbox();
 
         verify(outboxRepository, never()).markAsDeadLettered(any());
+        verify(eventPublisher, never()).publish(nextEvent);
 
         outboxPoller.pollOutbox();
 
         verify(eventPublisher, org.mockito.Mockito.times(2)).publish(failedEvent);
+        verify(eventPublisher).publish(nextEvent);
+        verify(outboxRepository).markAsPublished(nextEvent.eventId());
         verify(eventPublisher, org.mockito.Mockito.times(2))
                 .publishToDeadLetter(failedEvent, "Serialization failed");
         verify(outboxRepository).markAsDeadLettered(failedEvent.eventId());

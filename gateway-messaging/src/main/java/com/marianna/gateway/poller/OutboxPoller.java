@@ -53,7 +53,6 @@ public class OutboxPoller {
                     return; // Exit the loop to retry on the next poll cycle, preventing further timeouts in this cycle
                 }
 
-                log.error("Failed to publish event {} for aggregateId: {} for customerId: {}", event.eventType(), event.aggregateId(), event.customerId(), e);
                 String reason = failureReason(e);
                 try {
                     int attempts = outboxRepository.recordFailure(event.eventId(), reason);

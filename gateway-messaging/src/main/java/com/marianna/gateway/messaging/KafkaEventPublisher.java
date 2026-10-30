@@ -26,7 +26,7 @@ public class KafkaEventPublisher implements EventPublisher {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final String topic;
     private static final String DEAD_LETTER_TOPIC = "payment-events-dlt";
-    private static final String DEAD_LETTER_REASON_HEADER = "reason";
+    private static final String DEAD_LETTER_REASON_HEADER = "dlt-reason";
 
     private final Integer sendTimeoutMs;
     private final ObjectMapper objectMapper;

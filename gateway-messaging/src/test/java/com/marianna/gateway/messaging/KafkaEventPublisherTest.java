@@ -134,7 +134,7 @@ class KafkaEventPublisherTest {
         assertThat(record.topic()).isEqualTo("payment-events-dlt");
         assertThat(record.key()).isEqualTo(event.customerId().toString());
         assertThat(record.value()).isEqualTo(objectMapper.writeValueAsString(event));
-        assertThat(record.headers().lastHeader("reason").value())
+        assertThat(record.headers().lastHeader("dlt-reason").value())
                 .isEqualTo(reason.getBytes(StandardCharsets.UTF_8));
     }
 

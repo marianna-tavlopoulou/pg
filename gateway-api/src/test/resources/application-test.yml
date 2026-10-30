@@ -45,3 +45,4 @@ gateway:
       enabled: false
       fixed-delay-ms: 5000
       initial-delay-ms: 10000
+      max-attempts: 5

@@ -6,4 +6,6 @@ public interface EventPublisher {
 
     void publish(PaymentEvent event);
 
+    void publishToDeadLetter(PaymentEvent event, String reason);
+
 }

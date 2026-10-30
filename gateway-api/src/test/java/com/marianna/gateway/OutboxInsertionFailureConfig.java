@@ -30,6 +30,16 @@ class OutboxInsertionFailureConfig {
             }
 
             @Override
+            public int recordFailure(java.util.UUID eventId, String error) {
+                return 0;
+            }
+
+            @Override
+            public void markAsDeadLettered(java.util.UUID eventId) {
+                // No-op
+            }
+
+            @Override
             public java.util.Optional<PaymentEvent> findByAggregateId(java.util.UUID aggregateId) {
                 return java.util.Optional.empty();
             }

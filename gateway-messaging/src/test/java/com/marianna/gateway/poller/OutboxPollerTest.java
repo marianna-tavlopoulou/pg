@@ -1,5 +1,6 @@
 package com.marianna.gateway.poller;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
@@ -93,14 +94,14 @@ class OutboxPollerTest {
     void shouldRecordFailureBelowMaxAttemptsWithoutDeadLettering() {
         PaymentEvent failedEvent = event();
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent));
-        doThrow(new RuntimeException("Kafka unavailable")).when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "Kafka unavailable")).thenReturn(2);
+        doThrow(new RuntimeException("Serialization failed")).when(eventPublisher).publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "Serialization failed")).thenReturn(2);
 
         outboxPoller.pollOutbox();
 
-        verify(outboxRepository).recordFailure(failedEvent.eventId(), "Kafka unavailable");
-        verify(eventPublisher, never()).publishToDeadLetter(failedEvent, "Kafka unavailable");
-        verify(outboxRepository, never()).markAsDeadLettered(failedEvent.eventId());
+        verify(outboxRepository).recordFailure(failedEvent.eventId(), "Serialization failed");
+        verify(eventPublisher, never()).publishToDeadLetter(any(), any());
+        verify(outboxRepository, never()).markAsDeadLettered(any());
     }
 
     @Test
@@ -109,13 +110,13 @@ class OutboxPollerTest {
         PaymentEvent failedEvent = event();
         PaymentEvent nextEvent = eventForCustomerId(failedEvent.customerId());
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent, nextEvent));
-        doThrow(new RuntimeException("Kafka unavailable")).when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "Kafka unavailable")).thenReturn(5);
+        doThrow(new RuntimeException("Serialization failed")).when(eventPublisher).publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "Serialization failed")).thenReturn(5);
 
         outboxPoller.pollOutbox();
 
-        verify(outboxRepository).recordFailure(failedEvent.eventId(), "Kafka unavailable");
-        verify(eventPublisher).publishToDeadLetter(failedEvent, "Kafka unavailable");
+        verify(outboxRepository).recordFailure(failedEvent.eventId(), "Serialization failed");
+        verify(eventPublisher).publishToDeadLetter(failedEvent, "Serialization failed");
         verify(outboxRepository).markAsDeadLettered(failedEvent.eventId());
         verify(eventPublisher).publish(nextEvent);
         verify(outboxRepository).markAsPublished(nextEvent.eventId());
@@ -126,21 +127,21 @@ class OutboxPollerTest {
     void shouldRetryDeadLetterPublishOnNextPoll() {
         PaymentEvent failedEvent = event();
         when(outboxRepository.findUnpublishedEvents(30)).thenAnswer(invocation -> List.of(failedEvent));
-        doThrow(new RuntimeException("Kafka unavailable")).when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "Kafka unavailable")).thenReturn(5, 6);
+        doThrow(new RuntimeException("Serialization failed")).when(eventPublisher).publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "Serialization failed")).thenReturn(5, 6);
         doThrow(new RuntimeException("DLT unavailable"))
                 .doNothing()
-                .when(eventPublisher).publishToDeadLetter(failedEvent, "Kafka unavailable");
+                .when(eventPublisher).publishToDeadLetter(failedEvent, "Serialization failed");
 
         outboxPoller.pollOutbox();
 
-        verify(outboxRepository, never()).markAsDeadLettered(failedEvent.eventId());
+        verify(outboxRepository, never()).markAsDeadLettered(any());
 
         outboxPoller.pollOutbox();
 
         verify(eventPublisher, org.mockito.Mockito.times(2)).publish(failedEvent);
         verify(eventPublisher, org.mockito.Mockito.times(2))
-                .publishToDeadLetter(failedEvent, "Kafka unavailable");
+                .publishToDeadLetter(failedEvent, "Serialization failed");
         verify(outboxRepository).markAsDeadLettered(failedEvent.eventId());
     }
 
@@ -155,8 +156,9 @@ class OutboxPollerTest {
 
         outboxPoller.pollOutbox();
 
-        verify(outboxRepository, never()).recordFailure(timedOutEvent.eventId(), "Timed out waiting for Kafka ack");
-        verify(eventPublisher, never()).publishToDeadLetter(timedOutEvent, "Timed out waiting for Kafka ack");
+        verify(outboxRepository, never()).recordFailure(any(), any());
+        verify(eventPublisher, never()).publishToDeadLetter(any(), any());
+        verify(outboxRepository, never()).markAsDeadLettered(any());
     }
 
     @Test

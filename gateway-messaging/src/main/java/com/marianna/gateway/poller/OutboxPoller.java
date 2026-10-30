@@ -64,8 +64,6 @@ public class OutboxPoller {
                         failedCustomerIds.add(event.customerId());
                     }
                 } catch (Exception failureHandlingException) {
-                    log.error("Failed to record or dead-letter outbox event {}", event.eventId(),
-                            failureHandlingException);
                     failedCustomerIds.add(event.customerId());
                 }
                 continue;

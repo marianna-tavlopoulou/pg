@@ -89,22 +89,6 @@ class OutboxPollerTest {
     }
 
     @Test
-    @DisplayName("Skips a customer's later events when marking an event as published fails")
-    void shouldSkipCustomerWhenMarkAsPublishedFails() {
-        PaymentEvent firstEvent = event();
-        PaymentEvent nextEvent = eventForCustomerId(firstEvent.customerId());
-        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(firstEvent, nextEvent));
-        doThrow(new RuntimeException("Mark failed")).when(outboxRepository).markAsPublished(firstEvent.eventId());
-
-        outboxPoller.pollOutbox();
-
-        verify(eventPublisher).publish(firstEvent);
-        verify(eventPublisher, never()).publish(nextEvent);
-        verify(outboxRepository).markAsPublished(firstEvent.eventId());
-        verify(outboxRepository, never()).markAsPublished(nextEvent.eventId());
-    }
-
-    @Test
     @DisplayName("Records a publish failure below the maximum attempts without sending to DLT")
     void shouldRecordFailureBelowMaxAttemptsWithoutDeadLettering() {
         PaymentEvent failedEvent = event();
@@ -135,6 +119,29 @@ class OutboxPollerTest {
         verify(outboxRepository).markAsDeadLettered(failedEvent.eventId());
         verify(eventPublisher).publish(nextEvent);
         verify(outboxRepository).markAsPublished(nextEvent.eventId());
+    }
+
+    @Test
+    @DisplayName("Retries dead-letter publishing next cycle without marking the event dead-lettered")
+    void shouldRetryDeadLetterPublishOnNextPoll() {
+        PaymentEvent failedEvent = event();
+        when(outboxRepository.findUnpublishedEvents(30)).thenAnswer(invocation -> List.of(failedEvent));
+        doThrow(new RuntimeException("Kafka unavailable")).when(eventPublisher).publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "Kafka unavailable")).thenReturn(5, 6);
+        doThrow(new RuntimeException("DLT unavailable"))
+                .doNothing()
+                .when(eventPublisher).publishToDeadLetter(failedEvent, "Kafka unavailable");
+
+        outboxPoller.pollOutbox();
+
+        verify(outboxRepository, never()).markAsDeadLettered(failedEvent.eventId());
+
+        outboxPoller.pollOutbox();
+
+        verify(eventPublisher, org.mockito.Mockito.times(2)).publish(failedEvent);
+        verify(eventPublisher, org.mockito.Mockito.times(2))
+                .publishToDeadLetter(failedEvent, "Kafka unavailable");
+        verify(outboxRepository).markAsDeadLettered(failedEvent.eventId());
     }
 
     @Test
@@ -205,19 +212,23 @@ class OutboxPollerTest {
     }
 
     @Test
-    @DisplayName("Continues processing later events when marking an event as published fails")
-    void shouldContinueWhenMarkingAnEventAsPublishedFails() {
+    @DisplayName("Stops the batch when marking an event as published fails")
+    void shouldStopBatchWhenMarkingAnEventAsPublishedFails() {
         PaymentEvent firstEvent = event();
-        PaymentEvent nextEvent = event();
-        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(firstEvent, nextEvent));
+        PaymentEvent nextEventOtherCustomer = event();
+        PaymentEvent nextEventSameCustomer = eventForCustomerId(firstEvent.customerId());
+        when(outboxRepository.findUnpublishedEvents(30))
+                .thenReturn(List.of(firstEvent, nextEventOtherCustomer, nextEventSameCustomer));
         doThrow(new RuntimeException("Mark failed")).when(outboxRepository).markAsPublished(firstEvent.eventId());
 
         outboxPoller.pollOutbox();
 
         verify(eventPublisher).publish(firstEvent);
-        verify(eventPublisher).publish(nextEvent);
+        verify(eventPublisher, never()).publish(nextEventOtherCustomer);
+        verify(eventPublisher, never()).publish(nextEventSameCustomer);
         verify(outboxRepository).markAsPublished(firstEvent.eventId());
-        verify(outboxRepository).markAsPublished(nextEvent.eventId());
+        verify(outboxRepository, never()).markAsPublished(nextEventOtherCustomer.eventId());
+        verify(outboxRepository, never()).markAsPublished(nextEventSameCustomer.eventId());
     }
 
     private PaymentEvent event() {

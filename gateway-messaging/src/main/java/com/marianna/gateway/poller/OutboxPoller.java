@@ -39,30 +39,63 @@ public class OutboxPoller {
         List<PaymentEvent> unpublishedEvents = outboxRepository.findUnpublishedEvents(30);
         Set<UUID> failedCustomerIds = new HashSet<>();
         for (PaymentEvent event : unpublishedEvents) {
+            if (failedCustomerIds.contains(event.customerId())) {
+                log.warn("Skipping event {} for aggregateId: {} for customerId: {} because a previous event for this customer failed to publish in this poll cycle",
+                        event.eventType(), event.aggregateId(), event.customerId());
+                continue;
+            }
+
             try {
-                if (failedCustomerIds.contains(event.customerId())) {
-                    log.warn("Skipping event {} for aggregateId: {} for customerId: {} because a previous event for this customer failed to publish in this poll cycle", event.eventType(), event.aggregateId(), event.customerId());
-                    continue;
-                }
                 eventPublisher.publish(event);
-                try {
-                    outboxRepository.markAsPublished(event.eventId());
-                } catch (Exception e) {
-                    log.error("Failed to mark event {} with eventId: {} as published for aggregateId: {} for customerId: {}", event.eventType(), event.eventId(), event.aggregateId(), event.customerId(), e);
-                    failedCustomerIds.add(event.customerId());
-                }
             } catch (Exception e) {
-                if (e instanceof TimeoutException
-                        || e.getCause() instanceof TimeoutException
-                        || e.getCause() instanceof java.util.concurrent.TimeoutException) {
+                if (isTimeout(e)) {
                     log.error("Timeout occurred while publishing event {} for aggregateId: {} for customerId: {}", event.eventType(), event.aggregateId(), event.customerId());
                     return; // Exit the loop to retry on the next poll cycle, preventing further timeouts in this cycle
                 }
-                // Log the error, mark the customer as failed, and continue with the next customer's event
+
                 log.error("Failed to publish event {} for aggregateId: {} for customerId: {}", event.eventType(), event.aggregateId(), event.customerId(), e);
-                failedCustomerIds.add(event.customerId());
+                String reason = failureReason(e);
+                try {
+                    int attempts = outboxRepository.recordFailure(event.eventId(), reason);
+                    if (attempts >= maxAttempts) {
+                        eventPublisher.publishToDeadLetter(event, reason);
+                        outboxRepository.markAsDeadLettered(event.eventId());
+                        log.warn("Dead-lettered event {} after {} attempts", event.eventId(), attempts);
+                    } else {
+                        failedCustomerIds.add(event.customerId());
+                    }
+                } catch (Exception failureHandlingException) {
+                    log.error("Failed to record or dead-letter outbox event {}", event.eventId(),
+                            failureHandlingException);
+                    failedCustomerIds.add(event.customerId());
+                }
+                continue;
+            }
+
+            try {
+                outboxRepository.markAsPublished(event.eventId());
+            } catch (Exception e) {
+                log.error("Failed to mark event {} with eventId: {} as published for aggregateId: {} for customerId: {}",
+                        event.eventType(), event.eventId(), event.aggregateId(), event.customerId(), e);
+                return;
             }
         }
+    }
+
+    private boolean isTimeout(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            if (current instanceof TimeoutException || current instanceof java.util.concurrent.TimeoutException) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    private String failureReason(Exception error) {
+        String message = error.getMessage();
+        return message == null || message.isBlank() ? error.getClass().getSimpleName() : message;
     }
 
 }

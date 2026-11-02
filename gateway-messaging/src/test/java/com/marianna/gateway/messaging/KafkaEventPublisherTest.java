@@ -1,17 +1,21 @@
 package com.marianna.gateway.messaging;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -26,6 +30,7 @@ import com.marianna.gateway.domain.PaymentMethod;
 import com.marianna.gateway.domain.PaymentOrder;
 import com.marianna.gateway.domain.PaymentStatus;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -46,6 +51,9 @@ class KafkaEventPublisherTest {
 
     @Mock
     private RecordMetadata recordMetadata;
+
+    @Captor
+    private ArgumentCaptor<ProducerRecord<String, String>> producerRecordCaptor;
 
     private KafkaEventPublisher kafkaEventPublisher;
     private ObjectMapper objectMapper;
@@ -108,6 +116,26 @@ class KafkaEventPublisherTest {
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Failed to publish event")
                 .hasCause(failure);
+    }
+
+    @Test
+    @DisplayName("Should publish failed event to DLT with the failure reason in a header")
+    void shouldPublishToDeadLetterTopicWithReasonHeader() throws Exception {
+        PaymentEvent event = event();
+        String reason = "Kafka unavailable after retry limit";
+        when(kafkaTemplate.send(org.mockito.ArgumentMatchers.<ProducerRecord<String, String>>any()))
+                .thenReturn(CompletableFuture.completedFuture(sendResult));
+        when(sendResult.getRecordMetadata()).thenReturn(recordMetadata);
+
+        kafkaEventPublisher.publishToDeadLetter(event, reason);
+
+        verify(kafkaTemplate).send(producerRecordCaptor.capture());
+        ProducerRecord<String, String> record = producerRecordCaptor.getValue();
+        assertThat(record.topic()).isEqualTo("payment-events-dlt");
+        assertThat(record.key()).isEqualTo(event.customerId().toString());
+        assertThat(record.value()).isEqualTo(objectMapper.writeValueAsString(event));
+        assertThat(record.headers().lastHeader("dlt-reason").value())
+                .isEqualTo(reason.getBytes(StandardCharsets.UTF_8));
     }
 
     private PaymentEvent event() {

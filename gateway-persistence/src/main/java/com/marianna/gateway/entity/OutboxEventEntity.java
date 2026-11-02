@@ -46,6 +46,18 @@ public class OutboxEventEntity {
     @Column(name = "published", nullable = false)
     private Boolean published;
 
+    @Column(name = "attempts", nullable = false)
+    private int attempts;
+
+    @Column(name = "last_error", columnDefinition = "text")
+    private String lastError;
+
+    @Column(name = "dead_lettered", nullable = false)
+    private boolean deadLettered;
+
+    @Column(name = "parked_at")
+    private Instant parkedAt;
+
     @PrePersist
     void prePersist() {
         createdAt = Instant.now();

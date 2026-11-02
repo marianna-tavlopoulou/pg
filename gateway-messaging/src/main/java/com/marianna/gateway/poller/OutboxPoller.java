@@ -54,6 +54,10 @@ public class OutboxPoller {
             try {
                 eventPublisher.publish(event);
             } catch (Exception e) {
+                if (isInterrupt(e)) {
+                    log.warn("Interrupted while publishing event {}; stopping poll cycle", event.eventId());
+                    return; // Shutting down: do not count an attempt, and later sends would fail immediately
+                }
                 if (isTimeout(e)) {
                     log.error("Timeout occurred while publishing event {} for aggregateId: {} for customerId: {}", event.eventType(), event.aggregateId(), event.customerId());
                     return; // Exit the loop to retry on the next poll cycle, preventing further timeouts in this cycle
@@ -77,6 +81,10 @@ public class OutboxPoller {
                 try {
                     eventPublisher.publishToDeadLetter(event, reason);
                 } catch (Exception deadLetterException) {
+                    if (isInterrupt(deadLetterException)) {
+                        log.warn("Interrupted while dead-lettering event {}; stopping poll cycle", event.eventId());
+                        return; // Shutting down: retry the dead-letter publish on the next start
+                    }
                     if (isTimeout(deadLetterException)) {
                         log.error("Timeout occurred while dead-lettering event {} for aggregateId: {} for customerId: {}",
                                 event.eventId(), event.aggregateId(), event.customerId());
@@ -112,6 +120,15 @@ public class OutboxPoller {
     private boolean isTimeout(Throwable error) {
         for (Throwable current : causeChain(error)) {
             if (current instanceof TimeoutException || current instanceof java.util.concurrent.TimeoutException) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isInterrupt(Throwable error) {
+        for (Throwable current : causeChain(error)) {
+            if (current instanceof InterruptedException) {
                 return true;
             }
         }

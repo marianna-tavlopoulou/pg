@@ -318,6 +318,38 @@ class OutboxPollerTest {
     }
 
     @Test
+    @DisplayName("Stops the batch without recording a failure when publishing is interrupted")
+    void shouldStopBatchWithoutRecordingFailureWhenInterrupted() {
+        PaymentEvent interruptedEvent = event();
+        PaymentEvent nextEventOtherCustomer = event();
+        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(interruptedEvent, nextEventOtherCustomer));
+        doThrow(new RuntimeException("Interrupted waiting for Kafka ack", new InterruptedException()))
+                .when(eventPublisher).publish(interruptedEvent);
+
+        outboxPoller.pollOutbox();
+
+        verify(outboxRepository, never()).recordFailure(any(), any());
+        verify(eventPublisher, never()).publish(nextEventOtherCustomer);
+    }
+
+    @Test
+    @DisplayName("Stops the batch when dead-letter publishing is interrupted")
+    void shouldStopBatchWhenDeadLetterPublishIsInterrupted() {
+        PaymentEvent failedEvent = event();
+        PaymentEvent nextEventOtherCustomer = event();
+        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent, nextEventOtherCustomer));
+        doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed")).thenReturn(5);
+        doThrow(new RuntimeException("Interrupted waiting for Kafka ack", new InterruptedException()))
+                .when(eventPublisher).publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
+
+        outboxPoller.pollOutbox();
+
+        verify(outboxRepository, never()).markAsDeadLettered(any());
+        verify(eventPublisher, never()).publish(nextEventOtherCustomer);
+    }
+
+    @Test
     @DisplayName("Does not record a failure when publishing times out")
     void shouldNotRecordFailureWhenPublishingTimesOut() {
         PaymentEvent timedOutEvent = event();

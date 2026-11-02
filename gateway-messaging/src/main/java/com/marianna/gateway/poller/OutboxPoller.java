@@ -1,6 +1,9 @@
 package com.marianna.gateway.poller;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -21,6 +24,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j 
 @ConditionalOnProperty(name = "gateway.poller.outbox.enabled", havingValue = "true", matchIfMissing = true)
 public class OutboxPoller {
+
+    private static final int MAX_CAUSE_DEPTH = 20;
 
     private final EventPublisher eventPublisher;
     private final OutboxRepository outboxRepository;
@@ -104,24 +109,32 @@ public class OutboxPoller {
     }
 
     private boolean isTimeout(Throwable error) {
-        Throwable current = error;
-        while (current != null) {
+        for (Throwable current : causeChain(error)) {
             if (current instanceof TimeoutException || current instanceof java.util.concurrent.TimeoutException) {
                 return true;
             }
-            current = current.getCause();
         }
         return false;
     }
 
     // The publisher wraps failures in generic RuntimeExceptions, so the root cause carries the useful detail.
     private String failureReason(Exception error) {
-        Throwable rootCause = error;
-        while (rootCause.getCause() != null) {
-            rootCause = rootCause.getCause();
-        }
+        List<Throwable> chain = causeChain(error);
+        Throwable rootCause = chain.get(chain.size() - 1);
         String message = rootCause.getMessage();
         return message == null || message.isBlank() ? rootCause.getClass().getSimpleName() : message;
+    }
+
+    // Bounded and cycle-safe, so a malformed cause chain cannot block the scheduler thread.
+    private List<Throwable> causeChain(Throwable error) {
+        List<Throwable> chain = new ArrayList<>();
+        Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        Throwable current = error;
+        while (current != null && chain.size() < MAX_CAUSE_DEPTH && seen.add(current)) {
+            chain.add(current);
+            current = current.getCause();
+        }
+        return chain;
     }
 
 }

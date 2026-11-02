@@ -1,6 +1,8 @@
 package com.marianna.gateway.poller;
 
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
@@ -8,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -255,6 +258,41 @@ class OutboxPollerTest {
         verify(eventPublisher, never()).publish(nextEventSameCustomer);
         verify(eventPublisher).publish(nextEventOtherCustomer);
         verify(outboxRepository).markAsPublished(nextEventOtherCustomer.eventId());
+    }
+
+    @Test
+    @DisplayName("Does not hang when the exception cause chain contains a cycle")
+    void shouldNotHangOnCyclicCauseChain() {
+        PaymentEvent failedEvent = event();
+        RuntimeException a = new RuntimeException("a");
+        RuntimeException b = new RuntimeException("b");
+        a.initCause(b);
+        b.initCause(a);
+        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent));
+        doThrow(a).when(eventPublisher).publish(failedEvent);
+        when(outboxRepository.recordFailure(any(), anyString())).thenReturn(1);
+
+        assertTimeoutPreemptively(Duration.ofSeconds(2), () -> outboxPoller.pollOutbox());
+
+        verify(outboxRepository).recordFailure(any(), anyString());
+    }
+
+    @Test
+    @DisplayName("Stops the batch when a TimeoutException is deep in the cause chain")
+    void shouldDetectTimeoutDeepInCauseChain() {
+        PaymentEvent timedOutEvent = event();
+        PaymentEvent nextEvent = event();
+        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(timedOutEvent, nextEvent));
+        doThrow(new RuntimeException("level 1",
+                new RuntimeException("level 2",
+                        new RuntimeException("level 3",
+                                new TimeoutException("Kafka acknowledgement timed out")))))
+                .when(eventPublisher).publish(timedOutEvent);
+
+        outboxPoller.pollOutbox();
+
+        verify(outboxRepository, never()).recordFailure(any(), any());
+        verify(eventPublisher, never()).publish(nextEvent);
     }
 
     @Test

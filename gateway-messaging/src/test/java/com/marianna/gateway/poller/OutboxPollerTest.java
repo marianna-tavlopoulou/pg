@@ -45,7 +45,7 @@ class OutboxPollerTest {
 
     @BeforeEach
     void setUp() {
-        outboxPoller = new OutboxPoller(eventPublisher, outboxRepository, 5);
+        outboxPoller = new OutboxPoller(eventPublisher, outboxRepository, 5, 3);
     }
 
     @Test
@@ -346,6 +346,81 @@ class OutboxPollerTest {
         outboxPoller.pollOutbox();
 
         verify(outboxRepository, never()).markAsDeadLettered(any());
+        verify(eventPublisher, never()).publish(nextEventOtherCustomer);
+    }
+
+    @Test
+    @DisplayName("Blocks the customer without parking when below the park threshold")
+    void shouldBlockCustomerWithoutParkingBelowParkThreshold() {
+        PaymentEvent failedEvent = event();
+        PaymentEvent nextEventSameCustomer = eventForCustomerId(failedEvent.customerId());
+        PaymentEvent nextEventOtherCustomer = event();
+        when(outboxRepository.findUnpublishedEvents(30))
+                .thenReturn(List.of(failedEvent, nextEventOtherCustomer, nextEventSameCustomer));
+        doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed")).thenReturn(6);
+        doThrow(new RuntimeException("DLT unavailable"))
+                .when(eventPublisher).publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
+
+        outboxPoller.pollOutbox();
+
+        verify(outboxRepository, never()).markAsParked(any());
+        verify(eventPublisher, never()).publish(nextEventSameCustomer);
+        verify(eventPublisher).publish(nextEventOtherCustomer);
+    }
+
+    @Test
+    @DisplayName("Parks the event and unblocks the customer at the park threshold")
+    void shouldParkAndUnblockCustomerAtParkThreshold() {
+        PaymentEvent failedEvent = event();
+        PaymentEvent nextEventSameCustomer = eventForCustomerId(failedEvent.customerId());
+        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent, nextEventSameCustomer));
+        doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed")).thenReturn(8);
+        doThrow(new RuntimeException("DLT unavailable"))
+                .when(eventPublisher).publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
+
+        outboxPoller.pollOutbox();
+
+        verify(outboxRepository).markAsParked(failedEvent.eventId());
+        verify(outboxRepository, never()).markAsDeadLettered(any());
+        verify(eventPublisher).publish(nextEventSameCustomer);
+        verify(outboxRepository).markAsPublished(nextEventSameCustomer.eventId());
+    }
+
+    @Test
+    @DisplayName("Stops the batch when parking an event fails")
+    void shouldStopBatchWhenParkingFails() {
+        PaymentEvent failedEvent = event();
+        PaymentEvent nextEventOtherCustomer = event();
+        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent, nextEventOtherCustomer));
+        doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed")).thenReturn(8);
+        doThrow(new RuntimeException("DLT unavailable"))
+                .when(eventPublisher).publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
+        doThrow(new RuntimeException("Database unavailable"))
+                .when(outboxRepository).markAsParked(failedEvent.eventId());
+
+        outboxPoller.pollOutbox();
+
+        verify(eventPublisher, never()).publish(nextEventOtherCustomer);
+    }
+
+    @Test
+    @DisplayName("Does not park when dead-letter publishing times out at the park threshold")
+    void shouldNotParkWhenDeadLetterPublishTimesOutAtThreshold() {
+        PaymentEvent failedEvent = event();
+        PaymentEvent nextEventOtherCustomer = event();
+        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent, nextEventOtherCustomer));
+        doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed")).thenReturn(8);
+        doThrow(new RuntimeException("Timed out waiting for Kafka ack",
+                new TimeoutException("Kafka acknowledgement timed out")))
+                .when(eventPublisher).publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
+
+        outboxPoller.pollOutbox();
+
+        verify(outboxRepository, never()).markAsParked(any());
         verify(eventPublisher, never()).publish(nextEventOtherCustomer);
     }
 

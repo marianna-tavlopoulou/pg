@@ -40,6 +40,11 @@ class OutboxInsertionFailureConfig {
             }
 
             @Override
+            public void markAsParked(java.util.UUID eventId) {
+                // No-op
+            }
+
+            @Override
             public java.util.Optional<PaymentEvent> findByAggregateId(java.util.UUID aggregateId) {
                 return java.util.Optional.empty();
             }

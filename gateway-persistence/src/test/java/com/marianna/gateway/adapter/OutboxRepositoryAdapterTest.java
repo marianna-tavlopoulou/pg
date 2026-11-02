@@ -53,4 +53,13 @@ class OutboxRepositoryAdapterTest {
 
         verify(jpa).markAsDeadLettered(eventId);
     }
+
+    @Test
+    void markAsParkedDelegatesToRepository() {
+        UUID eventId = UUID.randomUUID();
+
+        adapter.markAsParked(eventId);
+
+        verify(jpa).markAsParked(eventId);
+    }
 }

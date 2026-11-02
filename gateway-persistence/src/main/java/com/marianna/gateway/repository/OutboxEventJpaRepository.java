@@ -15,7 +15,7 @@ import com.marianna.gateway.entity.OutboxEventEntity;
 
 public interface OutboxEventJpaRepository extends JpaRepository<OutboxEventEntity, UUID> {
 
-    @Query("SELECT e FROM OutboxEventEntity e WHERE e.published = false AND e.deadLettered = false ORDER BY e.createdAt ASC")
+    @Query("SELECT e FROM OutboxEventEntity e WHERE e.published = false AND e.deadLettered = false AND e.parkedAt IS NULL ORDER BY e.createdAt ASC")
     List<OutboxEventEntity> findUnpublishedEvents(Pageable pageable);
 
     @Modifying
@@ -29,6 +29,10 @@ public interface OutboxEventJpaRepository extends JpaRepository<OutboxEventEntit
     @Modifying
     @Query("UPDATE OutboxEventEntity e SET e.deadLettered = true WHERE e.id = :eventId")
     void markAsDeadLettered(UUID eventId);
+
+    @Modifying
+    @Query("UPDATE OutboxEventEntity e SET e.parkedAt = CURRENT_TIMESTAMP WHERE e.id = :eventId")
+    void markAsParked(UUID eventId);
 
     Optional<OutboxEventEntity> findByAggregateId(UUID aggregateId);
 

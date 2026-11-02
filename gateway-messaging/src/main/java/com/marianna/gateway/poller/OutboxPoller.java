@@ -31,12 +31,15 @@ public class OutboxPoller {
     private final EventPublisher eventPublisher;
     private final OutboxRepository outboxRepository;
     private final int maxAttempts;
+    private final int maxDeadLetterAttempts;
 
     public OutboxPoller(EventPublisher eventPublisher, OutboxRepository outboxRepository,
-            @Value("${gateway.poller.outbox.max-attempts:5}") int maxAttempts) {
+            @Value("${gateway.poller.outbox.max-attempts:5}") int maxAttempts,
+            @Value("${gateway.poller.outbox.max-dead-letter-attempts:3}") int maxDeadLetterAttempts) {
         this.eventPublisher = eventPublisher;
         this.outboxRepository = outboxRepository;
         this.maxAttempts = maxAttempts;
+        this.maxDeadLetterAttempts = maxDeadLetterAttempts;
     }
 
     @Scheduled(fixedDelayString = "${gateway.poller.outbox.fixed-delay-ms}", initialDelayString = "${gateway.poller.outbox.initial-delay-ms}")
@@ -92,6 +95,17 @@ public class OutboxPoller {
                     }
                     log.error("Failed to publish outbox event {} to dead-letter topic", event.eventId(),
                             deadLetterException);
+                    if (attempts >= maxAttempts + maxDeadLetterAttempts) {
+                        try {
+                            outboxRepository.markAsParked(event.eventId());
+                        } catch (Exception parkException) {
+                            log.error("Failed to park outbox event {}", event.eventId(), parkException);
+                            return; // The database is likely unavailable, so stop the batch and retry on the next poll cycle
+                        }
+                        log.error("OUTBOX_EVENT_PARKED eventId={} customerId={} attempts={} - manual action required",
+                                event.eventId(), event.customerId(), attempts);
+                        continue; // Parking unblocks the customer, same trade-off as dead-lettering
+                    }
                     failedCustomerIds.add(event.customerId());
                     continue;
                 }

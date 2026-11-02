@@ -73,6 +73,13 @@ public class OutboxRepositoryAdapter implements OutboxRepository {
         log.debug("Marked outbox event as dead-lettered: {}", eventId);
     }
 
+    @Override
+    @Transactional
+    public void markAsParked(UUID eventId) {
+        jpa.markAsParked(eventId);
+        log.debug("Marked outbox event as parked: {}", eventId);
+    }
+
     private OutboxEventEntity toEntity(PaymentEvent event) {
         var e = new OutboxEventEntity();
         e.setId(event.eventId());

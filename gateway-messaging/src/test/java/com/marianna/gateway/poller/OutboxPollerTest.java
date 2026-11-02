@@ -123,6 +123,40 @@ class OutboxPollerTest {
     }
 
     @Test
+    @DisplayName("Uses the root cause message when the publisher wraps a send failure")
+    void shouldUseRootCauseMessageForWrappedSendFailure() {
+        PaymentEvent failedEvent = event();
+        String rootCauseMessage = "The message is 2097152 bytes when serialized which is larger than 1048576";
+        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent));
+        doThrow(new RuntimeException("Failed to publish event " + failedEvent.eventId(),
+                new org.apache.kafka.common.errors.RecordTooLargeException(rootCauseMessage)))
+                .when(eventPublisher).publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), rootCauseMessage)).thenReturn(5);
+
+        outboxPoller.pollOutbox();
+
+        verify(outboxRepository).recordFailure(failedEvent.eventId(), rootCauseMessage);
+        verify(eventPublisher).publishToDeadLetter(failedEvent, rootCauseMessage);
+        verify(outboxRepository).markAsDeadLettered(failedEvent.eventId());
+    }
+
+    @Test
+    @DisplayName("Falls back to the root cause class name when it has no message")
+    void shouldUseRootCauseClassNameWhenRootCauseHasNoMessage() {
+        PaymentEvent failedEvent = event();
+        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent));
+        doThrow(new RuntimeException("Failed to serialize PaymentEvent",
+                new IllegalStateException(new UnsupportedOperationException())))
+                .when(eventPublisher).publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "UnsupportedOperationException")).thenReturn(1);
+
+        outboxPoller.pollOutbox();
+
+        verify(outboxRepository).recordFailure(failedEvent.eventId(), "UnsupportedOperationException");
+        verify(eventPublisher, never()).publishToDeadLetter(any(), any());
+    }
+
+    @Test
     @DisplayName("Retries dead-letter publishing next cycle without marking the event dead-lettered")
     void shouldRetryDeadLetterPublishOnNextPoll() {
         PaymentEvent failedEvent = event();

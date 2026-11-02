@@ -92,9 +92,14 @@ public class OutboxPoller {
         return false;
     }
 
+    // The publisher wraps failures in generic RuntimeExceptions, so the root cause carries the useful detail.
     private String failureReason(Exception error) {
-        String message = error.getMessage();
-        return message == null || message.isBlank() ? error.getClass().getSimpleName() : message;
+        Throwable rootCause = error;
+        while (rootCause.getCause() != null) {
+            rootCause = rootCause.getCause();
+        }
+        String message = rootCause.getMessage();
+        return message == null || message.isBlank() ? rootCause.getClass().getSimpleName() : message;
     }
 
 }

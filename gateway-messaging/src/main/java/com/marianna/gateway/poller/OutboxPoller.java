@@ -26,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 public class OutboxPoller {
 
     private static final int MAX_CAUSE_DEPTH = 20;
+    private static final int MAX_REASON_LENGTH = 500;
 
     private final EventPublisher eventPublisher;
     private final OutboxRepository outboxRepository;
@@ -118,11 +119,18 @@ public class OutboxPoller {
     }
 
     // The publisher wraps failures in generic RuntimeExceptions, so the root cause carries the useful detail.
+    // The reason is stored in last_error and the dlt-reason header, so it is truncated: the message may contain
+    // payment data, and a long header makes the DLT record bigger. The full exception is in the publisher's logs.
     private String failureReason(Exception error) {
         List<Throwable> chain = causeChain(error);
         Throwable rootCause = chain.get(chain.size() - 1);
+        String name = rootCause.getClass().getSimpleName();
+        if (name.isEmpty()) {
+            name = rootCause.getClass().getName();
+        }
         String message = rootCause.getMessage();
-        return message == null || message.isBlank() ? rootCause.getClass().getSimpleName() : message;
+        String reason = message == null || message.isBlank() ? name : name + ": " + message;
+        return reason.length() > MAX_REASON_LENGTH ? reason.substring(0, MAX_REASON_LENGTH) : reason;
     }
 
     // Bounded and cycle-safe, so a malformed cause chain cannot block the scheduler thread.

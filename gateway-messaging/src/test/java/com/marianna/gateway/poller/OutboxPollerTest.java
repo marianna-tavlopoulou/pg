@@ -1,6 +1,8 @@
 package com.marianna.gateway.poller;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -98,11 +101,11 @@ class OutboxPollerTest {
         PaymentEvent failedEvent = event();
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent));
         doThrow(new RuntimeException("Serialization failed")).when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "Serialization failed")).thenReturn(2);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Serialization failed")).thenReturn(2);
 
         outboxPoller.pollOutbox();
 
-        verify(outboxRepository).recordFailure(failedEvent.eventId(), "Serialization failed");
+        verify(outboxRepository).recordFailure(failedEvent.eventId(), "RuntimeException: Serialization failed");
         verify(eventPublisher, never()).publishToDeadLetter(any(), any());
         verify(outboxRepository, never()).markAsDeadLettered(any());
     }
@@ -114,12 +117,12 @@ class OutboxPollerTest {
         PaymentEvent nextEvent = eventForCustomerId(failedEvent.customerId());
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent, nextEvent));
         doThrow(new RuntimeException("Serialization failed")).when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "Serialization failed")).thenReturn(5);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Serialization failed")).thenReturn(5);
 
         outboxPoller.pollOutbox();
 
-        verify(outboxRepository).recordFailure(failedEvent.eventId(), "Serialization failed");
-        verify(eventPublisher).publishToDeadLetter(failedEvent, "Serialization failed");
+        verify(outboxRepository).recordFailure(failedEvent.eventId(), "RuntimeException: Serialization failed");
+        verify(eventPublisher).publishToDeadLetter(failedEvent, "RuntimeException: Serialization failed");
         verify(outboxRepository).markAsDeadLettered(failedEvent.eventId());
         verify(eventPublisher).publish(nextEvent);
         verify(outboxRepository).markAsPublished(nextEvent.eventId());
@@ -130,17 +133,36 @@ class OutboxPollerTest {
     void shouldUseRootCauseMessageForWrappedSendFailure() {
         PaymentEvent failedEvent = event();
         String rootCauseMessage = "The message is 2097152 bytes when serialized which is larger than 1048576";
+        String expectedReason = "RecordTooLargeException: " + rootCauseMessage;
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent));
         doThrow(new RuntimeException("Failed to publish event " + failedEvent.eventId(),
                 new org.apache.kafka.common.errors.RecordTooLargeException(rootCauseMessage)))
                 .when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), rootCauseMessage)).thenReturn(5);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), expectedReason)).thenReturn(5);
 
         outboxPoller.pollOutbox();
 
-        verify(outboxRepository).recordFailure(failedEvent.eventId(), rootCauseMessage);
-        verify(eventPublisher).publishToDeadLetter(failedEvent, rootCauseMessage);
+        verify(outboxRepository).recordFailure(failedEvent.eventId(), expectedReason);
+        verify(eventPublisher).publishToDeadLetter(failedEvent, expectedReason);
         verify(outboxRepository).markAsDeadLettered(failedEvent.eventId());
+    }
+
+    @Test
+    @DisplayName("Truncates the failure reason to 500 characters")
+    void shouldTruncateLongFailureReason() {
+        PaymentEvent failedEvent = event();
+        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent));
+        doThrow(new RuntimeException("Failed to publish event " + failedEvent.eventId(),
+                new org.apache.kafka.common.errors.RecordTooLargeException("x".repeat(2000))))
+                .when(eventPublisher).publish(failedEvent);
+        when(outboxRepository.recordFailure(any(), anyString())).thenReturn(1);
+
+        outboxPoller.pollOutbox();
+
+        ArgumentCaptor<String> reason = ArgumentCaptor.forClass(String.class);
+        verify(outboxRepository).recordFailure(org.mockito.ArgumentMatchers.eq(failedEvent.eventId()), reason.capture());
+        assertEquals(500, reason.getValue().length());
+        assertTrue(reason.getValue().startsWith("RecordTooLargeException: "));
     }
 
     @Test
@@ -167,10 +189,10 @@ class OutboxPollerTest {
         when(outboxRepository.findUnpublishedEvents(30))
                 .thenAnswer(invocation -> List.of(failedEvent, nextEvent));
         doThrow(new RuntimeException("Serialization failed")).when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "Serialization failed")).thenReturn(5, 6);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Serialization failed")).thenReturn(5, 6);
         doThrow(new RuntimeException("DLT unavailable"))
                 .doNothing()
-                .when(eventPublisher).publishToDeadLetter(failedEvent, "Serialization failed");
+                .when(eventPublisher).publishToDeadLetter(failedEvent, "RuntimeException: Serialization failed");
 
         outboxPoller.pollOutbox();
 
@@ -183,7 +205,7 @@ class OutboxPollerTest {
         verify(eventPublisher).publish(nextEvent);
         verify(outboxRepository).markAsPublished(nextEvent.eventId());
         verify(eventPublisher, org.mockito.Mockito.times(2))
-                .publishToDeadLetter(failedEvent, "Serialization failed");
+                .publishToDeadLetter(failedEvent, "RuntimeException: Serialization failed");
         verify(outboxRepository).markAsDeadLettered(failedEvent.eventId());
     }
 
@@ -194,7 +216,7 @@ class OutboxPollerTest {
         PaymentEvent nextEventOtherCustomer = event();
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent, nextEventOtherCustomer));
         doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "Publish failed"))
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed"))
                 .thenThrow(new RuntimeException("Database unavailable"));
 
         outboxPoller.pollOutbox();
@@ -211,13 +233,13 @@ class OutboxPollerTest {
         PaymentEvent nextEventOtherCustomer = event();
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent, nextEventOtherCustomer));
         doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "Publish failed")).thenReturn(5);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed")).thenReturn(5);
         doThrow(new RuntimeException("Database unavailable"))
                 .when(outboxRepository).markAsDeadLettered(failedEvent.eventId());
 
         outboxPoller.pollOutbox();
 
-        verify(eventPublisher).publishToDeadLetter(failedEvent, "Publish failed");
+        verify(eventPublisher).publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
         verify(eventPublisher, never()).publish(nextEventOtherCustomer);
     }
 
@@ -228,10 +250,10 @@ class OutboxPollerTest {
         PaymentEvent nextEventOtherCustomer = event();
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent, nextEventOtherCustomer));
         doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "Publish failed")).thenReturn(5);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed")).thenReturn(5);
         doThrow(new RuntimeException("Timed out waiting for Kafka ack",
                 new TimeoutException("Kafka acknowledgement timed out")))
-                .when(eventPublisher).publishToDeadLetter(failedEvent, "Publish failed");
+                .when(eventPublisher).publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
 
         outboxPoller.pollOutbox();
 
@@ -248,9 +270,9 @@ class OutboxPollerTest {
         when(outboxRepository.findUnpublishedEvents(30))
                 .thenReturn(List.of(failedEvent, nextEventOtherCustomer, nextEventSameCustomer));
         doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "Publish failed")).thenReturn(5);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed")).thenReturn(5);
         doThrow(new RuntimeException("DLT unavailable"))
-                .when(eventPublisher).publishToDeadLetter(failedEvent, "Publish failed");
+                .when(eventPublisher).publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
 
         outboxPoller.pollOutbox();
 

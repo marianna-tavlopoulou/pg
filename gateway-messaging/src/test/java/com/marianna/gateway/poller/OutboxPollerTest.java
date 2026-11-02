@@ -185,6 +185,79 @@ class OutboxPollerTest {
     }
 
     @Test
+    @DisplayName("Stops the batch when recording a publish failure fails")
+    void shouldStopBatchWhenRecordingFailureFails() {
+        PaymentEvent failedEvent = event();
+        PaymentEvent nextEventOtherCustomer = event();
+        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent, nextEventOtherCustomer));
+        doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "Publish failed"))
+                .thenThrow(new RuntimeException("Database unavailable"));
+
+        outboxPoller.pollOutbox();
+
+        verify(eventPublisher, never()).publish(nextEventOtherCustomer);
+        verify(eventPublisher, never()).publishToDeadLetter(any(), any());
+        verify(outboxRepository, never()).markAsDeadLettered(any());
+    }
+
+    @Test
+    @DisplayName("Stops the batch when marking an event as dead-lettered fails")
+    void shouldStopBatchWhenMarkingAsDeadLetteredFails() {
+        PaymentEvent failedEvent = event();
+        PaymentEvent nextEventOtherCustomer = event();
+        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent, nextEventOtherCustomer));
+        doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "Publish failed")).thenReturn(5);
+        doThrow(new RuntimeException("Database unavailable"))
+                .when(outboxRepository).markAsDeadLettered(failedEvent.eventId());
+
+        outboxPoller.pollOutbox();
+
+        verify(eventPublisher).publishToDeadLetter(failedEvent, "Publish failed");
+        verify(eventPublisher, never()).publish(nextEventOtherCustomer);
+    }
+
+    @Test
+    @DisplayName("Stops the batch when dead-letter publishing times out")
+    void shouldStopBatchWhenDeadLetterPublishTimesOut() {
+        PaymentEvent failedEvent = event();
+        PaymentEvent nextEventOtherCustomer = event();
+        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent, nextEventOtherCustomer));
+        doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "Publish failed")).thenReturn(5);
+        doThrow(new RuntimeException("Timed out waiting for Kafka ack",
+                new TimeoutException("Kafka acknowledgement timed out")))
+                .when(eventPublisher).publishToDeadLetter(failedEvent, "Publish failed");
+
+        outboxPoller.pollOutbox();
+
+        verify(outboxRepository, never()).markAsDeadLettered(any());
+        verify(eventPublisher, never()).publish(nextEventOtherCustomer);
+    }
+
+    @Test
+    @DisplayName("Blocks only the customer when dead-letter publishing fails without a timeout")
+    void shouldBlockOnlyCustomerWhenDeadLetterPublishFails() {
+        PaymentEvent failedEvent = event();
+        PaymentEvent nextEventSameCustomer = eventForCustomerId(failedEvent.customerId());
+        PaymentEvent nextEventOtherCustomer = event();
+        when(outboxRepository.findUnpublishedEvents(30))
+                .thenReturn(List.of(failedEvent, nextEventOtherCustomer, nextEventSameCustomer));
+        doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "Publish failed")).thenReturn(5);
+        doThrow(new RuntimeException("DLT unavailable"))
+                .when(eventPublisher).publishToDeadLetter(failedEvent, "Publish failed");
+
+        outboxPoller.pollOutbox();
+
+        verify(outboxRepository, never()).markAsDeadLettered(any());
+        verify(eventPublisher, never()).publish(nextEventSameCustomer);
+        verify(eventPublisher).publish(nextEventOtherCustomer);
+        verify(outboxRepository).markAsPublished(nextEventOtherCustomer.eventId());
+    }
+
+    @Test
     @DisplayName("Does not record a failure when publishing times out")
     void shouldNotRecordFailureWhenPublishingTimesOut() {
         PaymentEvent timedOutEvent = event();

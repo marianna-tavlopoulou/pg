@@ -54,20 +54,42 @@ public class OutboxPoller {
                 }
 
                 String reason = failureReason(e);
+                int attempts;
                 try {
-                    int attempts = outboxRepository.recordFailure(event.eventId(), reason);
-                    if (attempts >= maxAttempts) {
-                        eventPublisher.publishToDeadLetter(event, reason);
-                        outboxRepository.markAsDeadLettered(event.eventId());
-                        log.warn("Dead-lettered event {} after {} attempts", event.eventId(), attempts);
-                    } else {
-                        failedCustomerIds.add(event.customerId());
-                    }
-                } catch (Exception failureHandlingException) {
-                    log.error("Failed to record or dead-letter outbox event {}", event.eventId(),
-                            failureHandlingException);
-                    failedCustomerIds.add(event.customerId());
+                    attempts = outboxRepository.recordFailure(event.eventId(), reason);
+                } catch (Exception recordFailureException) {
+                    log.error("Failed to record publish failure for outbox event {}", event.eventId(),
+                            recordFailureException);
+                    return; // The database is likely unavailable, so stop the batch and retry on the next poll cycle
                 }
+
+                if (attempts < maxAttempts) {
+                    failedCustomerIds.add(event.customerId());
+                    continue;
+                }
+
+                try {
+                    eventPublisher.publishToDeadLetter(event, reason);
+                } catch (Exception deadLetterException) {
+                    if (isTimeout(deadLetterException)) {
+                        log.error("Timeout occurred while dead-lettering event {} for aggregateId: {} for customerId: {}",
+                                event.eventId(), event.aggregateId(), event.customerId());
+                        return; // Same as the main path: stop the batch to avoid further timeouts in this cycle
+                    }
+                    log.error("Failed to publish outbox event {} to dead-letter topic", event.eventId(),
+                            deadLetterException);
+                    failedCustomerIds.add(event.customerId());
+                    continue;
+                }
+
+                try {
+                    outboxRepository.markAsDeadLettered(event.eventId());
+                } catch (Exception markDeadLetteredException) {
+                    log.error("Failed to mark outbox event {} as dead-lettered", event.eventId(),
+                            markDeadLetteredException);
+                    return; // The database is likely unavailable, so stop the batch and retry on the next poll cycle
+                }
+                log.warn("Dead-lettered event {} after {} attempts", event.eventId(), attempts);
                 continue;
             }
 

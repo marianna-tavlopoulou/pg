@@ -1,22 +1,19 @@
 package com.marianna.gateway.adapter;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-
-import jakarta.persistence.EntityNotFoundException;
 import com.marianna.gateway.domain.PaymentEvent;
 import com.marianna.gateway.domain.PaymentEventType;
 import com.marianna.gateway.entity.OutboxEventEntity;
 import com.marianna.gateway.port.OutboxRepository;
 import com.marianna.gateway.repository.OutboxEventJpaRepository;
-
+import jakarta.persistence.EntityNotFoundException;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Slf4j
@@ -43,8 +40,7 @@ public class OutboxRepositoryAdapter implements OutboxRepository {
 
     @Override
     public Optional<PaymentEvent> findByAggregateId(UUID aggregateId) {
-        return jpa.findByAggregateId(aggregateId)
-                .map(this::toDomain);
+        return jpa.findByAggregateId(aggregateId).map(this::toDomain);
     }
 
     @Override
@@ -92,9 +88,12 @@ public class OutboxRepositoryAdapter implements OutboxRepository {
     }
 
     private PaymentEvent toDomain(OutboxEventEntity e) {
-        return new PaymentEvent(e.getId(), e.getAggregateId(), e.getCustomerId(),
+        return new PaymentEvent(
+                e.getId(),
+                e.getAggregateId(),
+                e.getCustomerId(),
                 PaymentEventType.valueOf(e.getEventType()),
-                e.getPayload(), e.getCreatedAt());
+                e.getPayload(),
+                e.getCreatedAt());
     }
-
 }

@@ -11,5 +11,4 @@ public interface VelocityCheckPort {
     int getDuplicateAmountCount(String customerId, BigDecimal amount);
 
     boolean isVelocityExceeded(String customerId);
-
 }

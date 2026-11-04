@@ -1,5 +1,8 @@
 package com.marianna.gateway.poller;
 
+import com.marianna.gateway.domain.PaymentEvent;
+import com.marianna.gateway.port.EventPublisher;
+import com.marianna.gateway.port.OutboxRepository;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -7,21 +10,15 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.errors.TimeoutException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import com.marianna.gateway.domain.PaymentEvent;
-import com.marianna.gateway.port.EventPublisher;
-import com.marianna.gateway.port.OutboxRepository;
-
-import lombok.extern.slf4j.Slf4j;
-
-@Component 
-@Slf4j 
+@Component
+@Slf4j
 @ConditionalOnProperty(name = "gateway.poller.outbox.enabled", havingValue = "true", matchIfMissing = true)
 public class OutboxPoller {
 
@@ -33,7 +30,9 @@ public class OutboxPoller {
     private final int maxAttempts;
     private final int maxDeadLetterAttempts;
 
-    public OutboxPoller(EventPublisher eventPublisher, OutboxRepository outboxRepository,
+    public OutboxPoller(
+            EventPublisher eventPublisher,
+            OutboxRepository outboxRepository,
             @Value("${gateway.poller.outbox.max-attempts:5}") int maxAttempts,
             @Value("${gateway.poller.outbox.max-dead-letter-attempts:3}") int maxDeadLetterAttempts) {
         this.eventPublisher = eventPublisher;
@@ -42,15 +41,21 @@ public class OutboxPoller {
         this.maxDeadLetterAttempts = maxDeadLetterAttempts;
     }
 
-    @Scheduled(fixedDelayString = "${gateway.poller.outbox.fixed-delay-ms}", initialDelayString = "${gateway.poller.outbox.initial-delay-ms}")
-    //fixedDelay prevents overlap between successive executions of this scheduled task, but it does not prevent multiple application instances from polling the same outbox rows concurrently.
+    @Scheduled(
+            fixedDelayString = "${gateway.poller.outbox.fixed-delay-ms}",
+            initialDelayString = "${gateway.poller.outbox.initial-delay-ms}")
+    // fixedDelay prevents overlap between successive executions of this scheduled task, but it does not prevent
+    // multiple application instances from polling the same outbox rows concurrently.
     public void pollOutbox() {
         List<PaymentEvent> unpublishedEvents = outboxRepository.findUnpublishedEvents(30);
         Set<UUID> failedCustomerIds = new HashSet<>();
         for (PaymentEvent event : unpublishedEvents) {
             if (failedCustomerIds.contains(event.customerId())) {
-                log.warn("Skipping event {} for aggregateId: {} for customerId: {} because a previous event for this customer failed to publish in this poll cycle",
-                        event.eventType(), event.aggregateId(), event.customerId());
+                log.warn(
+                        "Skipping event {} for aggregateId: {} for customerId: {} because a previous event for this customer failed to publish in this poll cycle",
+                        event.eventType(),
+                        event.aggregateId(),
+                        event.customerId());
                 continue;
             }
 
@@ -62,7 +67,11 @@ public class OutboxPoller {
                     return; // Shutting down: do not count an attempt, and later sends would fail immediately
                 }
                 if (isTimeout(e)) {
-                    log.error("Timeout occurred while publishing event {} for aggregateId: {} for customerId: {}", event.eventType(), event.aggregateId(), event.customerId());
+                    log.error(
+                            "Timeout occurred while publishing event {} for aggregateId: {} for customerId: {}",
+                            event.eventType(),
+                            event.aggregateId(),
+                            event.customerId());
                     return; // Exit the loop to retry on the next poll cycle, preventing further timeouts in this cycle
                 }
 
@@ -71,7 +80,9 @@ public class OutboxPoller {
                 try {
                     attempts = outboxRepository.recordFailure(event.eventId(), reason);
                 } catch (Exception recordFailureException) {
-                    log.error("Failed to record publish failure for outbox event {}", event.eventId(),
+                    log.error(
+                            "Failed to record publish failure for outbox event {}",
+                            event.eventId(),
                             recordFailureException);
                     return; // The database is likely unavailable, so stop the batch and retry on the next poll cycle
                 }
@@ -89,21 +100,30 @@ public class OutboxPoller {
                         return; // Shutting down: retry the dead-letter publish on the next start
                     }
                     if (isTimeout(deadLetterException)) {
-                        log.error("Timeout occurred while dead-lettering event {} for aggregateId: {} for customerId: {}",
-                                event.eventId(), event.aggregateId(), event.customerId());
+                        log.error(
+                                "Timeout occurred while dead-lettering event {} for aggregateId: {} for customerId: {}",
+                                event.eventId(),
+                                event.aggregateId(),
+                                event.customerId());
                         return; // Same as the main path: stop the batch to avoid further timeouts in this cycle
                     }
-                    log.error("Failed to publish outbox event {} to dead-letter topic", event.eventId(),
+                    log.error(
+                            "Failed to publish outbox event {} to dead-letter topic",
+                            event.eventId(),
                             deadLetterException);
                     if (attempts >= maxAttempts + maxDeadLetterAttempts) {
                         try {
                             outboxRepository.markAsParked(event.eventId());
                         } catch (Exception parkException) {
                             log.error("Failed to park outbox event {}", event.eventId(), parkException);
-                            return; // The database is likely unavailable, so stop the batch and retry on the next poll cycle
+                            return; // The database is likely unavailable, so stop the batch and retry on the next poll
+                            // cycle
                         }
-                        log.error("OUTBOX_EVENT_PARKED eventId={} customerId={} attempts={} - manual action required",
-                                event.eventId(), event.customerId(), attempts);
+                        log.error(
+                                "OUTBOX_EVENT_PARKED eventId={} customerId={} attempts={} - manual action required",
+                                event.eventId(),
+                                event.customerId(),
+                                attempts);
                         continue; // Parking unblocks the customer, same trade-off as dead-lettering
                     }
                     failedCustomerIds.add(event.customerId());
@@ -113,7 +133,9 @@ public class OutboxPoller {
                 try {
                     outboxRepository.markAsDeadLettered(event.eventId());
                 } catch (Exception markDeadLetteredException) {
-                    log.error("Failed to mark outbox event {} as dead-lettered", event.eventId(),
+                    log.error(
+                            "Failed to mark outbox event {} as dead-lettered",
+                            event.eventId(),
                             markDeadLetteredException);
                     return; // The database is likely unavailable, so stop the batch and retry on the next poll cycle
                 }
@@ -124,8 +146,13 @@ public class OutboxPoller {
             try {
                 outboxRepository.markAsPublished(event.eventId());
             } catch (Exception e) {
-                log.error("Failed to mark event {} with eventId: {} as published for aggregateId: {} for customerId: {}",
-                        event.eventType(), event.eventId(), event.aggregateId(), event.customerId(), e);
+                log.error(
+                        "Failed to mark event {} with eventId: {} as published for aggregateId: {} for customerId: {}",
+                        event.eventType(),
+                        event.eventId(),
+                        event.aggregateId(),
+                        event.customerId(),
+                        e);
                 return;
             }
         }
@@ -175,5 +202,4 @@ public class OutboxPoller {
         }
         return chain;
     }
-
 }

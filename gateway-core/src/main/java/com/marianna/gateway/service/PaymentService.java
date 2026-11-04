@@ -1,16 +1,13 @@
 package com.marianna.gateway.service;
 
-import java.util.Optional;
-import java.util.UUID;
-
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.stereotype.Service;
-
 import com.marianna.gateway.domain.PaymentOrder;
 import com.marianna.gateway.port.FraudEvaluator;
 import com.marianna.gateway.port.PaymentRepository;
-
+import java.util.Optional;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Service;
 
 @Service
 @Slf4j
@@ -20,7 +17,9 @@ public class PaymentService {
     private final PaymentFinalizationService paymentFinalizationService;
     private final FraudEvaluator fraudEvaluator;
 
-    public PaymentService(PaymentRepository paymentRepository, FraudEvaluator fraudEvaluator,
+    public PaymentService(
+            PaymentRepository paymentRepository,
+            FraudEvaluator fraudEvaluator,
             PaymentFinalizationService paymentFinalizationService) {
         this.paymentRepository = paymentRepository;
         this.paymentFinalizationService = paymentFinalizationService;
@@ -44,8 +43,10 @@ public class PaymentService {
             // The PENDING row is already committed.
             // The outbox poller will retry any partially-written rows.
             // Client should poll GET /payments/{id} for resolution.
-            log.error("Finalization failed for payment id={}, returning PENDING. " +
-                    "OutboxPoller will retry.", saved.id(), e);
+            log.error(
+                    "Finalization failed for payment id={}, returning PENDING. " + "OutboxPoller will retry.",
+                    saved.id(),
+                    e);
             return saved;
         }
     }
@@ -59,7 +60,8 @@ public class PaymentService {
     }
 
     private PaymentOrder findExistingOrder(PaymentOrder order) {
-        return paymentRepository.findByIdempotencyKey(order.idempotencyKey())
+        return paymentRepository
+                .findByIdempotencyKey(order.idempotencyKey())
                 .orElseThrow(() -> new DataIntegrityViolationException(
                         "Duplicate key detected but existing record could not be retrieved"));
     }

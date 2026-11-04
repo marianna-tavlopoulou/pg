@@ -1,23 +1,20 @@
 package com.marianna.gateway.messaging;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.marianna.gateway.domain.PaymentEvent;
+import com.marianna.gateway.port.EventPublisher;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.marianna.gateway.domain.PaymentEvent;
-import com.marianna.gateway.port.EventPublisher;
-
-import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
@@ -31,9 +28,11 @@ public class KafkaEventPublisher implements EventPublisher {
     private final Integer sendTimeoutMs;
     private final ObjectMapper objectMapper;
 
-    public KafkaEventPublisher(KafkaTemplate<String, String> kafkaTemplate,
+    public KafkaEventPublisher(
+            KafkaTemplate<String, String> kafkaTemplate,
             @Value("${gateway.messaging.payment-events-topic}") String topic,
-            @Value("${gateway.messaging.send-timeout-ms}") Integer sendTimeoutMs, ObjectMapper objectMapper) {
+            @Value("${gateway.messaging.send-timeout-ms}") Integer sendTimeoutMs,
+            ObjectMapper objectMapper) {
         this.kafkaTemplate = kafkaTemplate;
         this.topic = topic;
         this.sendTimeoutMs = sendTimeoutMs;
@@ -46,17 +45,25 @@ public class KafkaEventPublisher implements EventPublisher {
         String customerId = event.customerId().toString();
 
         try {
-            log.debug("Publishing event {} to topic {} for aggregateId: {} for customerId: {}", event.eventType(),
+            log.debug(
+                    "Publishing event {} to topic {} for aggregateId: {} for customerId: {}",
+                    event.eventType(),
                     topic,
-                    event.aggregateId(), customerId);
+                    event.aggregateId(),
+                    customerId);
             // Block until Kafka acknowledges. This ensures markAsPublished()
             // in the OutboxPoller is only called after confirmed delivery.
             // If this throws, the poller catches per-row, logs, and retries
             // on the next poll cycle — at-least-once delivery guaranteed.
             awaitAcknowledgement(kafkaTemplate.send(topic, customerId, payload), topic, event);
         } catch (RuntimeException e) {
-            log.error("Failed to publish event {} to topic {} for aggregateId: {} for customerId: {}",
-                    event.eventType(), topic, event.aggregateId(), customerId, e);
+            log.error(
+                    "Failed to publish event {} to topic {} for aggregateId: {} for customerId: {}",
+                    event.eventType(),
+                    topic,
+                    event.aggregateId(),
+                    customerId,
+                    e);
             throw e;
         }
     }
@@ -71,8 +78,12 @@ public class KafkaEventPublisher implements EventPublisher {
         try {
             awaitAcknowledgement(kafkaTemplate.send(record), DEAD_LETTER_TOPIC, event);
         } catch (RuntimeException e) {
-            log.error("Failed to publish event {} to dead-letter topic for aggregateId: {} for customerId: {}",
-                    event.eventType(), event.aggregateId(), customerId, e);
+            log.error(
+                    "Failed to publish event {} to dead-letter topic for aggregateId: {} for customerId: {}",
+                    event.eventType(),
+                    event.aggregateId(),
+                    customerId,
+                    e);
             throw e;
         }
     }
@@ -86,13 +97,18 @@ public class KafkaEventPublisher implements EventPublisher {
         }
     }
 
-    private void awaitAcknowledgement(CompletableFuture<SendResult<String, String>> future,
-            String destinationTopic, PaymentEvent event) {
+    private void awaitAcknowledgement(
+            CompletableFuture<SendResult<String, String>> future, String destinationTopic, PaymentEvent event) {
         try {
             SendResult<String, String> result = future.get(sendTimeoutMs, TimeUnit.MILLISECONDS);
             var metadata = result.getRecordMetadata();
-            log.info("Successfully published event {} to topic {} partition {} at offset {} for payment: {}",
-                    event.eventType(), destinationTopic, metadata.partition(), metadata.offset(), event.aggregateId());
+            log.info(
+                    "Successfully published event {} to topic {} partition {} at offset {} for payment: {}",
+                    event.eventType(),
+                    destinationTopic,
+                    metadata.partition(),
+                    metadata.offset(),
+                    event.aggregateId());
         } catch (ExecutionException e) {
             throw new RuntimeException("Failed to publish event " + event.eventId(), e.getCause());
         } catch (InterruptedException e) {
@@ -102,5 +118,4 @@ public class KafkaEventPublisher implements EventPublisher {
             throw new RuntimeException("Timed out waiting for Kafka ack, event=" + event.eventId(), e);
         }
     }
-
 }

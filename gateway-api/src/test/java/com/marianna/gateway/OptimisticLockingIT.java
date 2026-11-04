@@ -2,6 +2,11 @@ package com.marianna.gateway;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.marianna.gateway.domain.Currency;
+import com.marianna.gateway.domain.PaymentMethod;
+import com.marianna.gateway.domain.PaymentOrder;
+import com.marianna.gateway.domain.PaymentStatus;
+import com.marianna.gateway.port.PaymentRepository;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -12,17 +17,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.OptimisticLockingFailureException;
-
-import com.marianna.gateway.domain.Currency;
-import com.marianna.gateway.domain.PaymentMethod;
-import com.marianna.gateway.domain.PaymentOrder;
-import com.marianna.gateway.domain.PaymentStatus;
-import com.marianna.gateway.port.PaymentRepository;
 
 class OptimisticLockingIT extends BaseIntegrationTest {
 
@@ -30,12 +28,18 @@ class OptimisticLockingIT extends BaseIntegrationTest {
     PaymentRepository paymentRepository;
 
     @Test
-    @DisplayName("Two threads loading the same payment and both transitioning status -> exposes whether optimistic locking is actually enforced")
+    @DisplayName(
+            "Two threads loading the same payment and both transitioning status -> exposes whether optimistic locking is actually enforced")
     void concurrentStatusUpdatesOnSameOrder_exposesLockingBehavior() throws Exception {
 
-        PaymentOrder created = PaymentOrder
-                .create(UUID.randomUUID(), UUID.randomUUID(), new BigDecimal(50), Currency.EUR, PaymentMethod.CARD,
-                        UUID.randomUUID().toString(), "lock test");
+        PaymentOrder created = PaymentOrder.create(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                new BigDecimal(50),
+                Currency.EUR,
+                PaymentMethod.CARD,
+                UUID.randomUUID().toString(),
+                "lock test");
         PaymentOrder saved = paymentRepository.save(created);
 
         int threadCount = 2;
@@ -60,16 +64,18 @@ class OptimisticLockingIT extends BaseIntegrationTest {
 
         for (Future<Void> f : futures) {
             f.get(15, TimeUnit.SECONDS); // both futures are already complete by the time invokeAll returns. f.get()
-                                         // makes an ExecutionException gets rethrown to the calling thread if the task
-                                         // itself threw something unexpected (anything other than the
-                                         // OptimisticLockingFailureException
+            // makes an ExecutionException gets rethrown to the calling thread if the task
+            // itself threw something unexpected (anything other than the
+            // OptimisticLockingFailureException
         }
 
         pool.shutdown();
 
-        assertThat(successCount.get()).as("First attempt should resolve to success").isEqualTo(1);
-        assertThat(conflictCount.get()).as("Second attempt should resolve to a version conflict").isEqualTo(1);
-
+        assertThat(successCount.get())
+                .as("First attempt should resolve to success")
+                .isEqualTo(1);
+        assertThat(conflictCount.get())
+                .as("Second attempt should resolve to a version conflict")
+                .isEqualTo(1);
     }
-
 }

@@ -1,5 +1,3 @@
 package com.marianna.gateway.dto;
 
-public record AuthRequest(String apiKey) {
-
-}
+public record AuthRequest(String apiKey) {}

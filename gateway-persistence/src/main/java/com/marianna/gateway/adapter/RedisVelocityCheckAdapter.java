@@ -1,16 +1,13 @@
 package com.marianna.gateway.adapter;
 
+import com.marianna.gateway.port.VelocityCheckPort;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
-
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Component;
-
-import com.marianna.gateway.port.VelocityCheckPort;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
@@ -47,19 +44,18 @@ public class RedisVelocityCheckAdapter implements VelocityCheckPort {
         // Expire old entries and set TTL so keys don't leak forever
         redisTemplate.opsForZSet().removeRangeByScore(vKey, 0, windowStart);
         redisTemplate.expire(vKey, WINDOW.plusMinutes(1)); // The TTL is WINDOW.plusMinutes(1) not WINDOW. This is
-                                                           // subtle but important: if a transaction arrives at t=0 and
-                                                           // the TTL is exactly 5 minutes, Redis may evict the key at
-                                                           // t=5:00 — but a new transaction at t=4:59 should still be
-                                                           // counted against it. The 1-minute buffer ensures the key
-                                                           // survives long enough for the window to naturally expire.
-                                                           // The removeRangeByScore handles the logical eviction of old
-                                                           // entries; the TTL is just a safety net against key leakage.
+        // subtle but important: if a transaction arrives at t=0 and
+        // the TTL is exactly 5 minutes, Redis may evict the key at
+        // t=5:00 — but a new transaction at t=4:59 should still be
+        // counted against it. The 1-minute buffer ensures the key
+        // survives long enough for the window to naturally expire.
+        // The removeRangeByScore handles the logical eviction of old
+        // entries; the TTL is just a safety net against key leakage.
         String aKey = key(AMOUNT_KEY, customerId) + ":" + amount.toPlainString();
         redisTemplate.opsForZSet().add(aKey, transactionId, now);
         log.debug("Customer: {} | amount: {} --> Add transaction", customerId, amount);
         redisTemplate.opsForZSet().removeRangeByScore(aKey, 0, windowStart);
         redisTemplate.expire(aKey, WINDOW.plusMinutes(1));
-
     }
 
     @Override
@@ -80,11 +76,9 @@ public class RedisVelocityCheckAdapter implements VelocityCheckPort {
 
         log.debug("Customer: {} | count: {} | amount: {}", customerId, count, amount);
         return count == null ? 0 : count.intValue();
-
     }
 
     private String key(String template, String customerId) {
         return template.formatted(customerId);
     }
-
 }

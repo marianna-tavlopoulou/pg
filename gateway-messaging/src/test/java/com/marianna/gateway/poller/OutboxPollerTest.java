@@ -12,12 +12,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.marianna.gateway.domain.PaymentEvent;
+import com.marianna.gateway.domain.PaymentEventType;
+import com.marianna.gateway.port.EventPublisher;
+import com.marianna.gateway.port.OutboxRepository;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,11 +29,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import com.marianna.gateway.domain.PaymentEvent;
-import com.marianna.gateway.domain.PaymentEventType;
-import com.marianna.gateway.port.EventPublisher;
-import com.marianna.gateway.port.OutboxRepository;
 
 @ExtendWith(MockitoExtension.class)
 class OutboxPollerTest {
@@ -83,7 +81,8 @@ class OutboxPollerTest {
         PaymentEvent nextEventCustomerX = eventForCustomerId(failedEventCustomerX.customerId());
         PaymentEvent nextEventCustomerY = event();
 
-        when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEventCustomerX, nextEventCustomerY, nextEventCustomerX));
+        when(outboxRepository.findUnpublishedEvents(30))
+                .thenReturn(List.of(failedEventCustomerX, nextEventCustomerY, nextEventCustomerX));
         doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEventCustomerX);
 
         outboxPoller.pollOutbox();
@@ -100,8 +99,11 @@ class OutboxPollerTest {
     void shouldRecordFailureBelowMaxAttemptsWithoutDeadLettering() {
         PaymentEvent failedEvent = event();
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent));
-        doThrow(new RuntimeException("Serialization failed")).when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Serialization failed")).thenReturn(2);
+        doThrow(new RuntimeException("Serialization failed"))
+                .when(eventPublisher)
+                .publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Serialization failed"))
+                .thenReturn(2);
 
         outboxPoller.pollOutbox();
 
@@ -116,8 +118,11 @@ class OutboxPollerTest {
         PaymentEvent failedEvent = event();
         PaymentEvent nextEvent = eventForCustomerId(failedEvent.customerId());
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent, nextEvent));
-        doThrow(new RuntimeException("Serialization failed")).when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Serialization failed")).thenReturn(5);
+        doThrow(new RuntimeException("Serialization failed"))
+                .when(eventPublisher)
+                .publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Serialization failed"))
+                .thenReturn(5);
 
         outboxPoller.pollOutbox();
 
@@ -135,10 +140,13 @@ class OutboxPollerTest {
         String rootCauseMessage = "The message is 2097152 bytes when serialized which is larger than 1048576";
         String expectedReason = "RecordTooLargeException: " + rootCauseMessage;
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent));
-        doThrow(new RuntimeException("Failed to publish event " + failedEvent.eventId(),
-                new org.apache.kafka.common.errors.RecordTooLargeException(rootCauseMessage)))
-                .when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), expectedReason)).thenReturn(5);
+        doThrow(new RuntimeException(
+                        "Failed to publish event " + failedEvent.eventId(),
+                        new org.apache.kafka.common.errors.RecordTooLargeException(rootCauseMessage)))
+                .when(eventPublisher)
+                .publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), expectedReason))
+                .thenReturn(5);
 
         outboxPoller.pollOutbox();
 
@@ -152,15 +160,18 @@ class OutboxPollerTest {
     void shouldTruncateLongFailureReason() {
         PaymentEvent failedEvent = event();
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent));
-        doThrow(new RuntimeException("Failed to publish event " + failedEvent.eventId(),
-                new org.apache.kafka.common.errors.RecordTooLargeException("x".repeat(2000))))
-                .when(eventPublisher).publish(failedEvent);
+        doThrow(new RuntimeException(
+                        "Failed to publish event " + failedEvent.eventId(),
+                        new org.apache.kafka.common.errors.RecordTooLargeException("x".repeat(2000))))
+                .when(eventPublisher)
+                .publish(failedEvent);
         when(outboxRepository.recordFailure(any(), anyString())).thenReturn(1);
 
         outboxPoller.pollOutbox();
 
         ArgumentCaptor<String> reason = ArgumentCaptor.forClass(String.class);
-        verify(outboxRepository).recordFailure(org.mockito.ArgumentMatchers.eq(failedEvent.eventId()), reason.capture());
+        verify(outboxRepository)
+                .recordFailure(org.mockito.ArgumentMatchers.eq(failedEvent.eventId()), reason.capture());
         assertEquals(500, reason.getValue().length());
         assertTrue(reason.getValue().startsWith("RecordTooLargeException: "));
     }
@@ -170,10 +181,13 @@ class OutboxPollerTest {
     void shouldUseRootCauseClassNameWhenRootCauseHasNoMessage() {
         PaymentEvent failedEvent = event();
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent));
-        doThrow(new RuntimeException("Failed to serialize PaymentEvent",
-                new IllegalStateException(new UnsupportedOperationException())))
-                .when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "UnsupportedOperationException")).thenReturn(1);
+        doThrow(new RuntimeException(
+                        "Failed to serialize PaymentEvent",
+                        new IllegalStateException(new UnsupportedOperationException())))
+                .when(eventPublisher)
+                .publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "UnsupportedOperationException"))
+                .thenReturn(1);
 
         outboxPoller.pollOutbox();
 
@@ -186,13 +200,16 @@ class OutboxPollerTest {
     void shouldRetryDeadLetterPublishOnNextPoll() {
         PaymentEvent failedEvent = event();
         PaymentEvent nextEvent = eventForCustomerId(failedEvent.customerId());
-        when(outboxRepository.findUnpublishedEvents(30))
-                .thenAnswer(invocation -> List.of(failedEvent, nextEvent));
-        doThrow(new RuntimeException("Serialization failed")).when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Serialization failed")).thenReturn(5, 6);
+        when(outboxRepository.findUnpublishedEvents(30)).thenAnswer(invocation -> List.of(failedEvent, nextEvent));
+        doThrow(new RuntimeException("Serialization failed"))
+                .when(eventPublisher)
+                .publish(failedEvent);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Serialization failed"))
+                .thenReturn(5, 6);
         doThrow(new RuntimeException("DLT unavailable"))
                 .doNothing()
-                .when(eventPublisher).publishToDeadLetter(failedEvent, "RuntimeException: Serialization failed");
+                .when(eventPublisher)
+                .publishToDeadLetter(failedEvent, "RuntimeException: Serialization failed");
 
         outboxPoller.pollOutbox();
 
@@ -233,9 +250,11 @@ class OutboxPollerTest {
         PaymentEvent nextEventOtherCustomer = event();
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent, nextEventOtherCustomer));
         doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed")).thenReturn(5);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed"))
+                .thenReturn(5);
         doThrow(new RuntimeException("Database unavailable"))
-                .when(outboxRepository).markAsDeadLettered(failedEvent.eventId());
+                .when(outboxRepository)
+                .markAsDeadLettered(failedEvent.eventId());
 
         outboxPoller.pollOutbox();
 
@@ -250,10 +269,12 @@ class OutboxPollerTest {
         PaymentEvent nextEventOtherCustomer = event();
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent, nextEventOtherCustomer));
         doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed")).thenReturn(5);
-        doThrow(new RuntimeException("Timed out waiting for Kafka ack",
-                new TimeoutException("Kafka acknowledgement timed out")))
-                .when(eventPublisher).publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed"))
+                .thenReturn(5);
+        doThrow(new RuntimeException(
+                        "Timed out waiting for Kafka ack", new TimeoutException("Kafka acknowledgement timed out")))
+                .when(eventPublisher)
+                .publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
 
         outboxPoller.pollOutbox();
 
@@ -270,9 +291,11 @@ class OutboxPollerTest {
         when(outboxRepository.findUnpublishedEvents(30))
                 .thenReturn(List.of(failedEvent, nextEventOtherCustomer, nextEventSameCustomer));
         doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed")).thenReturn(5);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed"))
+                .thenReturn(5);
         doThrow(new RuntimeException("DLT unavailable"))
-                .when(eventPublisher).publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
+                .when(eventPublisher)
+                .publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
 
         outboxPoller.pollOutbox();
 
@@ -305,11 +328,14 @@ class OutboxPollerTest {
         PaymentEvent timedOutEvent = event();
         PaymentEvent nextEvent = event();
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(timedOutEvent, nextEvent));
-        doThrow(new RuntimeException("level 1",
-                new RuntimeException("level 2",
-                        new RuntimeException("level 3",
-                                new TimeoutException("Kafka acknowledgement timed out")))))
-                .when(eventPublisher).publish(timedOutEvent);
+        doThrow(new RuntimeException(
+                        "level 1",
+                        new RuntimeException(
+                                "level 2",
+                                new RuntimeException(
+                                        "level 3", new TimeoutException("Kafka acknowledgement timed out")))))
+                .when(eventPublisher)
+                .publish(timedOutEvent);
 
         outboxPoller.pollOutbox();
 
@@ -324,7 +350,8 @@ class OutboxPollerTest {
         PaymentEvent nextEventOtherCustomer = event();
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(interruptedEvent, nextEventOtherCustomer));
         doThrow(new RuntimeException("Interrupted waiting for Kafka ack", new InterruptedException()))
-                .when(eventPublisher).publish(interruptedEvent);
+                .when(eventPublisher)
+                .publish(interruptedEvent);
 
         outboxPoller.pollOutbox();
 
@@ -339,9 +366,11 @@ class OutboxPollerTest {
         PaymentEvent nextEventOtherCustomer = event();
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent, nextEventOtherCustomer));
         doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed")).thenReturn(5);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed"))
+                .thenReturn(5);
         doThrow(new RuntimeException("Interrupted waiting for Kafka ack", new InterruptedException()))
-                .when(eventPublisher).publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
+                .when(eventPublisher)
+                .publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
 
         outboxPoller.pollOutbox();
 
@@ -358,9 +387,11 @@ class OutboxPollerTest {
         when(outboxRepository.findUnpublishedEvents(30))
                 .thenReturn(List.of(failedEvent, nextEventOtherCustomer, nextEventSameCustomer));
         doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed")).thenReturn(6);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed"))
+                .thenReturn(6);
         doThrow(new RuntimeException("DLT unavailable"))
-                .when(eventPublisher).publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
+                .when(eventPublisher)
+                .publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
 
         outboxPoller.pollOutbox();
 
@@ -376,9 +407,11 @@ class OutboxPollerTest {
         PaymentEvent nextEventSameCustomer = eventForCustomerId(failedEvent.customerId());
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent, nextEventSameCustomer));
         doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed")).thenReturn(8);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed"))
+                .thenReturn(8);
         doThrow(new RuntimeException("DLT unavailable"))
-                .when(eventPublisher).publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
+                .when(eventPublisher)
+                .publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
 
         outboxPoller.pollOutbox();
 
@@ -395,11 +428,14 @@ class OutboxPollerTest {
         PaymentEvent nextEventOtherCustomer = event();
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent, nextEventOtherCustomer));
         doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed")).thenReturn(8);
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed"))
+                .thenReturn(8);
         doThrow(new RuntimeException("DLT unavailable"))
-                .when(eventPublisher).publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
+                .when(eventPublisher)
+                .publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
         doThrow(new RuntimeException("Database unavailable"))
-                .when(outboxRepository).markAsParked(failedEvent.eventId());
+                .when(outboxRepository)
+                .markAsParked(failedEvent.eventId());
 
         outboxPoller.pollOutbox();
 
@@ -413,10 +449,12 @@ class OutboxPollerTest {
         PaymentEvent nextEventOtherCustomer = event();
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(failedEvent, nextEventOtherCustomer));
         doThrow(new RuntimeException("Publish failed")).when(eventPublisher).publish(failedEvent);
-        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed")).thenReturn(8);
-        doThrow(new RuntimeException("Timed out waiting for Kafka ack",
-                new TimeoutException("Kafka acknowledgement timed out")))
-                .when(eventPublisher).publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
+        when(outboxRepository.recordFailure(failedEvent.eventId(), "RuntimeException: Publish failed"))
+                .thenReturn(8);
+        doThrow(new RuntimeException(
+                        "Timed out waiting for Kafka ack", new TimeoutException("Kafka acknowledgement timed out")))
+                .when(eventPublisher)
+                .publishToDeadLetter(failedEvent, "RuntimeException: Publish failed");
 
         outboxPoller.pollOutbox();
 
@@ -429,9 +467,10 @@ class OutboxPollerTest {
     void shouldNotRecordFailureWhenPublishingTimesOut() {
         PaymentEvent timedOutEvent = event();
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(timedOutEvent));
-        doThrow(new RuntimeException("Timed out waiting for Kafka ack",
-                new TimeoutException("Kafka acknowledgement timed out")))
-                .when(eventPublisher).publish(timedOutEvent);
+        doThrow(new RuntimeException(
+                        "Timed out waiting for Kafka ack", new TimeoutException("Kafka acknowledgement timed out")))
+                .when(eventPublisher)
+                .publish(timedOutEvent);
 
         outboxPoller.pollOutbox();
 
@@ -443,8 +482,8 @@ class OutboxPollerTest {
     @Test
     @DisplayName("A null customerId does not abort the batch")
     void shouldContinueBatchWhenCustomerIdIsNull() {
-        PaymentEvent eventWithoutCustomerId = new PaymentEvent(UUID.randomUUID(), UUID.randomUUID(), null,
-                PaymentEventType.PAYMENT_COMPLETED, "{}", Instant.now());
+        PaymentEvent eventWithoutCustomerId = new PaymentEvent(
+                UUID.randomUUID(), UUID.randomUUID(), null, PaymentEventType.PAYMENT_COMPLETED, "{}", Instant.now());
         PaymentEvent nextEvent = event();
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(eventWithoutCustomerId, nextEvent));
         doThrow(new NullPointerException("customerId")).when(eventPublisher).publish(eventWithoutCustomerId);
@@ -463,9 +502,10 @@ class OutboxPollerTest {
         PaymentEvent timedOutEvent = event();
         PaymentEvent nextEvent = event();
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(timedOutEvent, nextEvent));
-        doThrow(new RuntimeException("Timed out waiting for Kafka ack",
-                new TimeoutException("Kafka acknowledgement timed out")))
-                .when(eventPublisher).publish(timedOutEvent);
+        doThrow(new RuntimeException(
+                        "Timed out waiting for Kafka ack", new TimeoutException("Kafka acknowledgement timed out")))
+                .when(eventPublisher)
+                .publish(timedOutEvent);
 
         outboxPoller.pollOutbox();
 
@@ -482,7 +522,8 @@ class OutboxPollerTest {
         PaymentEvent nextEvent = event();
         when(outboxRepository.findUnpublishedEvents(30)).thenReturn(List.of(timedOutEvent, nextEvent));
         doThrow(new org.apache.kafka.common.errors.TimeoutException("Kafka metadata timed out"))
-                .when(eventPublisher).publish(timedOutEvent);
+                .when(eventPublisher)
+                .publish(timedOutEvent);
 
         outboxPoller.pollOutbox();
 
@@ -513,13 +554,22 @@ class OutboxPollerTest {
     }
 
     private PaymentEvent event() {
-        return new PaymentEvent(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                PaymentEventType.PAYMENT_COMPLETED, "{}", Instant.now());
+        return new PaymentEvent(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                PaymentEventType.PAYMENT_COMPLETED,
+                "{}",
+                Instant.now());
     }
 
     private PaymentEvent eventForCustomerId(UUID customerId) {
-        return new PaymentEvent(UUID.randomUUID(), UUID.randomUUID(), customerId,
-                PaymentEventType.PAYMENT_COMPLETED, "{}", Instant.now());
+        return new PaymentEvent(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                customerId,
+                PaymentEventType.PAYMENT_COMPLETED,
+                "{}",
+                Instant.now());
     }
-
 }

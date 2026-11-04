@@ -1,7 +1,7 @@
 package com.marianna.gateway.exception;
 
 import java.util.stream.Collectors;
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
@@ -15,8 +15,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
-
-import lombok.extern.slf4j.Slf4j;
 
 @RestControllerAdvice
 @Slf4j
@@ -72,10 +70,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
-            MethodArgumentNotValidException ex, HttpHeaders headers,
-            HttpStatusCode status, WebRequest request) {
+            MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         String detail = ex.getBindingResult().getFieldErrors().stream()
-                .map(FieldError::getDefaultMessage).collect(Collectors.joining(", "));
+                .map(FieldError::getDefaultMessage)
+                .collect(Collectors.joining(", "));
         var p = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
         p.setTitle("Validation Failed");
         return ResponseEntity.badRequest().body(p);

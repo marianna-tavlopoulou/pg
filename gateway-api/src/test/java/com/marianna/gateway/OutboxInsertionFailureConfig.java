@@ -1,11 +1,10 @@
 package com.marianna.gateway;
 
+import com.marianna.gateway.domain.PaymentEvent;
+import com.marianna.gateway.port.OutboxRepository;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
-
-import com.marianna.gateway.domain.PaymentEvent;
-import com.marianna.gateway.port.OutboxRepository;
 
 @TestConfiguration
 class OutboxInsertionFailureConfig {
@@ -50,5 +49,4 @@ class OutboxInsertionFailureConfig {
             }
         };
     }
-
 }

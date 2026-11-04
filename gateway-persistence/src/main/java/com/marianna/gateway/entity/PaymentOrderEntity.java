@@ -1,13 +1,8 @@
 package com.marianna.gateway.entity;
 
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.UUID;
-
 import com.marianna.gateway.domain.Currency;
 import com.marianna.gateway.domain.PaymentMethod;
 import com.marianna.gateway.domain.PaymentStatus;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -18,15 +13,20 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "payment_orders", indexes = {
-        @Index(name = "idx_idempotency_key", columnList = "idempotency_key", unique = true),
-        @Index(name = "idx_merchant_status", columnList = "merchant_id, status")
-})
+@Table(
+        name = "payment_orders",
+        indexes = {
+            @Index(name = "idx_idempotency_key", columnList = "idempotency_key", unique = true),
+            @Index(name = "idx_merchant_status", columnList = "merchant_id, status")
+        })
 @Getter
 @Setter
 @NoArgsConstructor
@@ -81,5 +81,4 @@ public class PaymentOrderEntity {
     void preUpdate() {
         updatedAt = Instant.now();
     }
-
 }

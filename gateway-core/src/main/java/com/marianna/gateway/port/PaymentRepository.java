@@ -1,11 +1,10 @@
 package com.marianna.gateway.port;
 
+import com.marianna.gateway.domain.PaymentOrder;
+import com.marianna.gateway.domain.PaymentStatus;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import com.marianna.gateway.domain.PaymentOrder;
-import com.marianna.gateway.domain.PaymentStatus;
 
 public interface PaymentRepository {
     PaymentOrder save(PaymentOrder order);

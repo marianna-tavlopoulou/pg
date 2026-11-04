@@ -27,12 +27,27 @@ public record PaymentOrder(
      * Builder for brand-new payments — version is null because the row does
      * not exist in the database yet. Hibernate will assign version = 0 on INSERT.
      */
-    public static PaymentOrder create(UUID customerId, UUID merchantId, BigDecimal amount,
-            Currency currency, PaymentMethod method,
-            String idempotencyKey, String description) {
-        return new PaymentOrder(UUID.randomUUID(), customerId, merchantId, amount, currency,
-                method, PaymentStatus.PENDING, idempotencyKey, description,
-                Instant.now(), Instant.now(), null);
+    public static PaymentOrder create(
+            UUID customerId,
+            UUID merchantId,
+            BigDecimal amount,
+            Currency currency,
+            PaymentMethod method,
+            String idempotencyKey,
+            String description) {
+        return new PaymentOrder(
+                UUID.randomUUID(),
+                customerId,
+                merchantId,
+                amount,
+                currency,
+                method,
+                PaymentStatus.PENDING,
+                idempotencyKey,
+                description,
+                Instant.now(),
+                Instant.now(),
+                null);
     }
 
     /**
@@ -43,10 +58,20 @@ public record PaymentOrder(
      */
     public PaymentOrder withStatus(PaymentStatus newStatus) {
         if (!this.status.canTransitionTo(newStatus)) {
-            throw new IllegalStateException(
-                    "Cannot transition %s from %s to %s".formatted(id, status, newStatus));
+            throw new IllegalStateException("Cannot transition %s from %s to %s".formatted(id, status, newStatus));
         }
-        return new PaymentOrder(id, customerId, merchantId, amount, currency, method,
-                newStatus, idempotencyKey, description, createdAt, Instant.now(), version);
+        return new PaymentOrder(
+                id,
+                customerId,
+                merchantId,
+                amount,
+                currency,
+                method,
+                newStatus,
+                idempotencyKey,
+                description,
+                createdAt,
+                Instant.now(),
+                version);
     }
 }

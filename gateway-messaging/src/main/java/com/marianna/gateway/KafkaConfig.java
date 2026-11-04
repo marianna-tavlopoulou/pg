@@ -2,7 +2,6 @@ package com.marianna.gateway;
 
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -40,10 +39,7 @@ public class KafkaConfig {
 
     @Bean
     public NewTopic paymentEventsDlt() {
-        return TopicBuilder.name("payment-events-dlt")
-                .partitions(1)
-                .replicas(1)
-                .build();
+        return TopicBuilder.name("payment-events-dlt").partitions(1).replicas(1).build();
     }
 
     @Bean

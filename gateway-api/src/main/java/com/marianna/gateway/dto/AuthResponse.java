@@ -1,5 +1,3 @@
 package com.marianna.gateway.dto;
 
-public record AuthResponse(String token) {
-
-}
+public record AuthResponse(String token) {}

@@ -1,18 +1,15 @@
 package com.marianna.gateway.service;
 
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.springframework.stereotype.Service;
-
 import com.marianna.gateway.domain.FraudSignal;
 import com.marianna.gateway.domain.PaymentMethod;
 import com.marianna.gateway.domain.PaymentOrder;
 import com.marianna.gateway.port.FraudEvaluator;
 import com.marianna.gateway.port.VelocityCheckPort;
-
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
 
 @Service
 @Slf4j
@@ -63,12 +60,17 @@ public class FraudDetectionService implements FraudEvaluator {
             risk += DUPLICATE_AMOUNT_SCORE;
             flags.add("DUPLICATE_AMOUNT");
         }
-        velocityCheckPort.recordTransaction(order.customerId().toString(), order.id().toString(), order.amount());
+        velocityCheckPort.recordTransaction(
+                order.customerId().toString(), order.id().toString(), order.amount());
 
-        log.debug("Customer: {} | Total Risk: {} | Triggered Flags: {}",
-                order.customerId(), risk, String.join(", ", flags));
+        log.debug(
+                "Customer: {} | Total Risk: {} | Triggered Flags: {}",
+                order.customerId(),
+                risk,
+                String.join(", ", flags));
 
-        return flags.isEmpty() ? FraudSignal.clean(order.id()) // the score is also zero
+        return flags.isEmpty()
+                ? FraudSignal.clean(order.id()) // the score is also zero
                 : FraudSignal.risky(order.id(), risk, flags);
     }
 }

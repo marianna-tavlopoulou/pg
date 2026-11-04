@@ -8,18 +8,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.UUID;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.marianna.gateway.domain.Currency;
@@ -31,23 +19,33 @@ import com.marianna.gateway.domain.PaymentOrder;
 import com.marianna.gateway.domain.PaymentStatus;
 import com.marianna.gateway.port.OutboxRepository;
 import com.marianna.gateway.port.PaymentRepository;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentFinalizationServiceTest {
 
     @Mock
     PaymentRepository paymentRepository;
+
     @Mock
     OutboxRepository outboxRepository;
-    ObjectMapper objectMapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule());
+
+    ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     private PaymentFinalizationService paymentFinalizationService;
 
     @BeforeEach
     void setUp() {
-        paymentFinalizationService = new PaymentFinalizationService(paymentRepository,
-                outboxRepository, objectMapper);
+        paymentFinalizationService = new PaymentFinalizationService(paymentRepository, outboxRepository, objectMapper);
     }
 
     @Test
@@ -141,7 +139,8 @@ class PaymentFinalizationServiceTest {
     }
 
     @Test
-    @DisplayName("When paymentRepository.save() throws → outboxRepository.save() never called (proves transaction rollback intent even in unit context)")
+    @DisplayName(
+            "When paymentRepository.save() throws → outboxRepository.save() never called (proves transaction rollback intent even in unit context)")
     void shouldRollbackTransactionWhenPaymentRepositorySaveThrows() throws Exception {
 
         PaymentOrder order = buildOrder(new BigDecimal("100.00"), PaymentMethod.CARD);
@@ -149,14 +148,19 @@ class PaymentFinalizationServiceTest {
 
         when(paymentRepository.save(any(PaymentOrder.class))).thenThrow(new RuntimeException("Database error"));
 
-        assertThrows(RuntimeException.class,
-                () -> paymentFinalizationService.finalizePaymentStatus(order, fraudSignal));
+        assertThrows(
+                RuntimeException.class, () -> paymentFinalizationService.finalizePaymentStatus(order, fraudSignal));
         verifyNoInteractions(outboxRepository);
     }
 
     private PaymentOrder buildOrder(BigDecimal amount, PaymentMethod paymentMethod) {
-        return PaymentOrder.create(UUID.randomUUID(), UUID.randomUUID(), amount, Currency.EUR,
-                paymentMethod, UUID.randomUUID().toString(), "Test");
+        return PaymentOrder.create(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                amount,
+                Currency.EUR,
+                paymentMethod,
+                UUID.randomUUID().toString(),
+                "Test");
     }
-
 }

@@ -1,11 +1,5 @@
 package com.marianna.gateway.service;
 
-import java.time.Instant;
-import java.util.UUID;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marianna.gateway.domain.FraudSignal;
@@ -15,8 +9,11 @@ import com.marianna.gateway.domain.PaymentOrder;
 import com.marianna.gateway.domain.PaymentStatus;
 import com.marianna.gateway.port.OutboxRepository;
 import com.marianna.gateway.port.PaymentRepository;
-
+import java.time.Instant;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Slf4j
@@ -26,8 +23,8 @@ public class PaymentFinalizationService {
     private final OutboxRepository outboxRepository;
     private final ObjectMapper objectMapper;
 
-    public PaymentFinalizationService(PaymentRepository paymentRepository,
-            OutboxRepository outboxRepository, ObjectMapper objectMapper) {
+    public PaymentFinalizationService(
+            PaymentRepository paymentRepository, OutboxRepository outboxRepository, ObjectMapper objectMapper) {
         this.paymentRepository = paymentRepository;
         this.outboxRepository = outboxRepository;
         this.objectMapper = objectMapper;
@@ -43,10 +40,13 @@ public class PaymentFinalizationService {
         PaymentOrder finalized = applyFraudDecision(saved, fraudSignal);
         paymentRepository.save(finalized);
         String payload = serialize(finalized);
-        outboxRepository
-                .save(new PaymentEvent(UUID.randomUUID(), finalized.id(), finalized.customerId(),
-                        eventTypeForStatus(finalized.status()),
-                        payload, Instant.now()));
+        outboxRepository.save(new PaymentEvent(
+                UUID.randomUUID(),
+                finalized.id(),
+                finalized.customerId(),
+                eventTypeForStatus(finalized.status()),
+                payload,
+                Instant.now()));
         return finalized;
     }
 
@@ -70,8 +70,7 @@ public class PaymentFinalizationService {
         try {
             return objectMapper.writeValueAsString(order);
         } catch (JsonProcessingException e) {
-            throw new IllegalStateException(
-                    "Failed to serialize PaymentOrder id=" + order.id(), e);
+            throw new IllegalStateException("Failed to serialize PaymentOrder id=" + order.id(), e);
         }
     }
 
@@ -80,9 +79,7 @@ public class PaymentFinalizationService {
             case COMPLETED -> PaymentEventType.PAYMENT_COMPLETED;
             case DECLINED -> PaymentEventType.PAYMENT_DECLINED;
             case PROCESSING -> PaymentEventType.PAYMENT_PROCESSING;
-            default -> throw new IllegalArgumentException(
-                    "No eventType for PaymentStatus: " + status);
+            default -> throw new IllegalArgumentException("No eventType for PaymentStatus: " + status);
         };
     }
-
 }

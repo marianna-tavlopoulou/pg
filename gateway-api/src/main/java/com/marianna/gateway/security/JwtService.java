@@ -1,21 +1,18 @@
 package com.marianna.gateway.security;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Date;
-import java.util.Optional;
-import java.util.UUID;
-
-import javax.crypto.SecretKey;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.Optional;
+import java.util.UUID;
+import javax.crypto.SecretKey;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 @Service
 @Slf4j
@@ -48,7 +45,8 @@ public class JwtService {
             Claims claims = Jwts.parser()
                     .verifyWith(secretKey)
                     .build()
-                    .parseSignedClaims(token).getPayload();
+                    .parseSignedClaims(token)
+                    .getPayload();
 
             return Optional.of(claims);
         } catch (ExpiredJwtException e) {
@@ -63,7 +61,6 @@ public class JwtService {
     public String extractSubject(String token) {
 
         return extractClaims(token).getSubject();
-
     }
 
     public UUID extractUserId(Claims claims) {
@@ -72,7 +69,10 @@ public class JwtService {
     }
 
     public Claims extractClaims(String token) {
-        return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
+        return Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
-
 }

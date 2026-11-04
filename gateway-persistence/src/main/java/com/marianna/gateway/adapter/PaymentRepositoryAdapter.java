@@ -1,18 +1,15 @@
 package com.marianna.gateway.adapter;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import org.springframework.stereotype.Component;
-
 import com.marianna.gateway.domain.PaymentOrder;
 import com.marianna.gateway.domain.PaymentStatus;
 import com.marianna.gateway.entity.PaymentOrderEntity;
 import com.marianna.gateway.port.PaymentRepository;
 import com.marianna.gateway.repository.PaymentOrderJpaRepository;
-
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 @Component
 @Slf4j
@@ -46,7 +43,9 @@ public class PaymentRepositoryAdapter implements PaymentRepository {
 
     @Override
     public List<PaymentOrder> findByMerchantIdAndStatus(UUID merchantId, PaymentStatus status) {
-        return jpa.findByMerchantIdAndStatus(merchantId, status).stream().map(this::toDomain).toList();
+        return jpa.findByMerchantIdAndStatus(merchantId, status).stream()
+                .map(this::toDomain)
+                .toList();
     }
 
     private PaymentOrderEntity toEntity(PaymentOrder o) {

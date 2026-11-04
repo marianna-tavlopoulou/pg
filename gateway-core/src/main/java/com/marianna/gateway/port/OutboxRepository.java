@@ -1,10 +1,9 @@
 package com.marianna.gateway.port;
 
+import com.marianna.gateway.domain.PaymentEvent;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import com.marianna.gateway.domain.PaymentEvent;
 
 public interface OutboxRepository {
 
@@ -21,5 +20,4 @@ public interface OutboxRepository {
     void markAsParked(UUID eventId);
 
     Optional<PaymentEvent> findByAggregateId(UUID aggregateId);
-
 }

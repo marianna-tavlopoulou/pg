@@ -1,5 +1,21 @@
 package com.marianna.gateway.messaging;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.marianna.gateway.domain.Currency;
+import com.marianna.gateway.domain.PaymentEvent;
+import com.marianna.gateway.domain.PaymentEventType;
+import com.marianna.gateway.domain.PaymentMethod;
+import com.marianna.gateway.domain.PaymentOrder;
+import com.marianna.gateway.domain.PaymentStatus;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -7,7 +23,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,23 +35,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.marianna.gateway.domain.Currency;
-import com.marianna.gateway.domain.PaymentEvent;
-import com.marianna.gateway.domain.PaymentEventType;
-import com.marianna.gateway.domain.PaymentMethod;
-import com.marianna.gateway.domain.PaymentOrder;
-import com.marianna.gateway.domain.PaymentStatus;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class KafkaEventPublisherTest {
@@ -74,13 +72,22 @@ class KafkaEventPublisherTest {
         UUID aggregateId = UUID.randomUUID();
         UUID eventId = UUID.randomUUID();
         UUID customerId = UUID.randomUUID();
-        PaymentOrder payment = new PaymentOrder(aggregateId, customerId, UUID.randomUUID(), new BigDecimal("1000"),
-                Currency.EUR, PaymentMethod.BANK_TRANSFER, PaymentStatus.COMPLETED, UUID.randomUUID().toString(), "pay",
-                Instant.now(), Instant.now(), null);
+        PaymentOrder payment = new PaymentOrder(
+                aggregateId,
+                customerId,
+                UUID.randomUUID(),
+                new BigDecimal("1000"),
+                Currency.EUR,
+                PaymentMethod.BANK_TRANSFER,
+                PaymentStatus.COMPLETED,
+                UUID.randomUUID().toString(),
+                "pay",
+                Instant.now(),
+                Instant.now(),
+                null);
         String jsonPayment = objectMapper.writeValueAsString(payment);
-        PaymentEvent event = new PaymentEvent(eventId, aggregateId, customerId, PaymentEventType.PAYMENT_COMPLETED,
-                jsonPayment,
-                Instant.now());
+        PaymentEvent event = new PaymentEvent(
+                eventId, aggregateId, customerId, PaymentEventType.PAYMENT_COMPLETED, jsonPayment, Instant.now());
         String jsonEvent = objectMapper.writeValueAsString(event);
 
         kafkaEventPublisher.publish(event);
@@ -139,8 +146,12 @@ class KafkaEventPublisherTest {
     }
 
     private PaymentEvent event() {
-        return new PaymentEvent(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                PaymentEventType.PAYMENT_COMPLETED, "{}", Instant.now());
+        return new PaymentEvent(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                PaymentEventType.PAYMENT_COMPLETED,
+                "{}",
+                Instant.now());
     }
-
 }

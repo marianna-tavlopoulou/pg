@@ -7,6 +7,4 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @Configuration
 @EnableScheduling
 @ConditionalOnProperty(name = "gateway.poller.outbox.enabled", havingValue = "true", matchIfMissing = true)
-public class OutboxPollerConfig {
-
-}
+public class OutboxPollerConfig {}

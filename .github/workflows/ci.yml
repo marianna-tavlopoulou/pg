@@ -1,11 +1,20 @@
 name: CI
 on:
   push:
-    branches: [main, develop]
+    branches: ['**']   # every branch, including main
   pull_request:
-    branches: [main]
+    branches: [main]   # also builds the merge result
+
+# A new push cancels the older run on the same ref, except on main: every commit
+# that lands on main must get its own build-and-test result, so a red commit is
+# never hidden behind a later green one. PR runs use refs/pull/<n>/merge, so they
+# are in a separate group and never cancel the branch's push runs (or vice versa).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  # The job id is the required status check context on main: keep it stable.
   build-and-test:
     runs-on: ubuntu-latest
     env:

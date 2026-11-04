@@ -1,0 +1,38 @@
+name: Branch name
+
+on:
+  push:
+    branches-ignore: [main, 'dependabot/**']
+  pull_request:
+    branches: [main]
+
+permissions:
+  issues: read
+
+jobs:
+  # The job id is the required status check context on main: keep it stable.
+  branch-name:
+    # Skipped (not failed) for Dependabot; a skipped job satisfies a required check.
+    if: ${{ !startsWith(github.head_ref || github.ref_name, 'dependabot/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Branch is <type>/<issue>-<slug> and type matches the issue's type:* label
+        env:
+          # Passed via env, never interpolated into the script: branch names are untrusted input.
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Keep in sync with scripts/new-branch.sh and docs/rulesets/branch-naming.json.
+          if [[ ! "$BRANCH" =~ ^(feat|fix|test|chore|refactor)/([0-9]+)-[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+            echo "::error::Branch '$BRANCH' must be <type>/<issue>-<slug>, type = feat|fix|test|chore|refactor (e.g. fix/19-validation-gaps)"
+            exit 1
+          fi
+          type="${BASH_REMATCH[1]}"; issue="${BASH_REMATCH[2]}"
+          labels=$(gh api "repos/$REPO/issues/$issue" --jq '[.labels[].name] | join(",")') || {
+            echo "::error::Issue #$issue not found"; exit 1; }
+          if [[ ",$labels," != *",type:$type,"* ]]; then
+            echo "::error::Branch type '$type' doesn't match issue #$issue labels ($labels)"
+            exit 1
+          fi
+          echo "OK: $BRANCH matches type:$type on #$issue"

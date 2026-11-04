@@ -1,0 +1,23 @@
+{
+  "name": "Branch naming matches type labels",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["~ALL"],
+      "exclude": ["~DEFAULT_BRANCH", "refs/heads/dependabot/**", "refs/heads/gh-readonly-queue/**"]
+    }
+  },
+  "rules": [
+    {
+      "type": "branch_name_pattern",
+      "parameters": {
+        "name": "<type>/<issue>-<slug>, type = feat|bug|test|chore|refactor",
+        "negate": false,
+        "operator": "regex",
+        "pattern": "^(refs/heads/)?(feat|bug|test|chore|refactor)/[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$"
+      }
+    }
+  ],
+  "bypass_actors": []
+}

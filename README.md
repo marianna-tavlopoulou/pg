@@ -81,7 +81,7 @@ The merchant is taken from the JWT (currently a stub merchant `00000000-0000-000
 ./mvnw verify    # + integration tests (*IT, Failsafe) — needs Docker for Testcontainers
 ```
 
-Integration tests start their own PostgreSQL and Redis via Testcontainers and cover idempotency races, optimistic locking, fraud detection, and payment/outbox atomicity (happy path and rollback). Kafka and the outbox poller are disabled in API integration tests; the messaging module has its own unit tests. CI (GitHub Actions) runs `./mvnw clean verify` on pushes to `main`/`develop` and PRs to `main`.
+Integration tests start their own PostgreSQL and Redis via Testcontainers and cover idempotency races, optimistic locking, fraud detection, and payment/outbox atomicity (happy path and rollback). Kafka and the outbox poller are disabled in API integration tests; the messaging module has its own unit tests. CI (GitHub Actions) runs `./mvnw clean verify` (tests, Spotless, ArchUnit) on every push to any branch and on PRs to `main`; `main` requires a PR with a green `build-and-test` and `branch-name` check. Branch naming and the PR flow are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Key design decisions
 

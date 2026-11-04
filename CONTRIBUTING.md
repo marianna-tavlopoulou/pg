@@ -8,16 +8,16 @@ Every change starts from an issue and lives on a branch named after it:
 <type>/<issue>-<slug>
 ```
 
-- `<type>` is the issue's `type:*` label: `feat | bug | test | chore | refactor`. An issue has exactly one.
+- `<type>` is the issue's `type:*` label: `feat | fix | test | chore | refactor`. An issue has exactly one.
 - `<issue>` is the issue number.
 - `<slug>` comes from the issue title: lowercase words joined by `-`, at most ~40 characters.
 
-Examples: `bug/19-validation-gaps-return-a-misleading-409`, `chore/24-ci-doesnt-build-feature-branches`, `feat/25-outbox-metrics-and-alerts-actuator`.
+Examples: `fix/19-validation-gaps-return-a-misleading-409`, `chore/24-ci-doesnt-build-feature-branches`, `feat/25-outbox-metrics-and-alerts-actuator`.
 
 The regex (identical in the CI check, the script and the ruleset):
 
 ```
-^(feat|bug|test|chore|refactor)/[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$
+^(feat|fix|test|chore|refactor)/[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$
 ```
 
 The ruleset matches full refs, so its copy also allows an optional `refs/heads/` prefix.
@@ -27,7 +27,7 @@ The ruleset matches full refs, so its copy also allows an optional `refs/heads/`
 From the terminal (needs an authenticated `gh`):
 
 ```bash
-scripts/new-branch.sh 19 --dry-run   # prints bug/19-validation-gaps-return-a-misleading-409
+scripts/new-branch.sh 19 --dry-run   # prints fix/19-validation-gaps-return-a-misleading-409
 scripts/new-branch.sh 19             # creates it, links it to #19, checks it out
 ```
 
@@ -40,7 +40,7 @@ How the slug is built from the title:
 3. Drop apostrophes, replace every run of characters other than `A-Z a-z 0-9` with `-`, and lowercase it. Accented letters count as separators, so write titles in plain English.
 4. Trim to 40 characters at a word boundary.
 
-From the GitHub UI: issue sidebar → *Development* → *Create a branch*, then **edit the suggested name** (GitHub proposes `19-gw-210-…`) to `bug/19-…`.
+From the GitHub UI: issue sidebar → *Development* → *Create a branch*, then **edit the suggested name** (GitHub proposes `19-gw-210-…`) to `fix/19-…`.
 
 ### Enforcement
 

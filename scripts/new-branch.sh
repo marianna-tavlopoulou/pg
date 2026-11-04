@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # Keep in sync with .github/workflows/branch-name.yml and docs/rulesets/branch-naming.json.
-BRANCH_RE='^(feat|bug|test|chore|refactor)/[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$'
+BRANCH_RE='^(feat|fix|test|chore|refactor)/[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$'
 SLUG_MAX=40
 
 die() { echo "new-branch: $*" >&2; exit 1; }
